@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 3,
+  "id": "long-task-simple",
+  "version": "1.0.0",
+  "title": "long-task-simple",
+  "description": "long-task-lite 的极简变体：去 SRS / Design / wd 特性设计文档，唯一需求源 = 用户输入文档。bdd 节点直接据用户输入文档产出 BDD 可执行规约（bdd.json），BDD-xxx 场景 id 是全程唯一溯源货币（无 FR-id / srs.md / design.md）。decompose 把场景分组成 work-unit feature，init 生成带 bdd_ids 的 task。iter loop 体内 impl → review → gate_review 三节点：impl 直接据 bdd.json 场景实现代码 + 配套测试（测试断言 then/examples 的精确可观察值）；review 是 LLM 对抗审查者，按 task.bdd_ids 逐条核 BDD 覆盖与断言深度，落 .harness/memory/notes/feature-<id>-review-r<N>.md；gate_review 脚本机检硬门：真跑测试 + grep BDD id 覆盖 + 断言深度 + mock 可观察面。末段 st + gate_st 在真实集成环境逐条 replay 全部 BDD 场景并对账。",
+  "startNode": "scan",
+  "nodes": [
+    {
+      "id": "scan",
+      "title": "代码库约定扫描",
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "bdd",
+      "title": "用户输入 → BDD 可执行规约",
+      "x": 320,
+      "y": 100
+    },
+    {
+      "id": "gate_bdd",
+      "title": "BDD 规范性硬门",
+      "x": 540,
+      "y": 100,
+      "onFail": {
+        "rewindTo": "bdd",
+        "ticketTitle": "BDD 用例不规范 — 见校验报告",
+        "maxAttempts": 10,
+        "when": "status != \"ok\""
+      }
+    },
+    {
+      "id": "decompose",
+      "title": "BDD→feature 分组（按预算贪心填充）",
+      "x": 760,
+      "y": 100
+    },
+    {
+      "id": "gate_decompose",
+      "title": "Decompose 硬门（含过度碎片化判定）",
+      "x": 980,
+      "y": 100,
+      "onFail": {
+        "rewindTo": "decompose",
+        "ticketTitle": "feature-plan 不达标（BDD 覆盖/预算/过度碎片化）— 见校验报告，按提示 S5 聚合或拆分",
+        "maxAttempts": 10,
+        "when": "status != \"ok\""
+      }
+    },
+    {
+      "id": "init",
+      "title": "初始化 + 灌入 iter",
+      "x": 1200,
+      "y": 100
+    },
+    {
+      "id": "gate_init",
+      "title": "Init 硬门",
+      "x": 1420,
+      "y": 100,
+      "onFail": {
+        "rewindTo": "init",
+        "ticketTitle": "Init 产物不达标",
+        "maxAttempts": 10,
+        "when": "status != \"ok\""
+      }
+    },
+    {
+      "id": "iter",
+      "kind": "loop",
+      "title": "按 feature 迭代：impl → review → gate_review",
+      "x": 1640,
+      "y": 100,
+      "iterator": {
+        "kind": "tasks",
+        "tasksSchemaRef": "default",
+        "selectStrategy": "first-pending"
+      },
+      "body": {
+        "startNode": "impl",
+        "nodes": [
+          {
+            "id": "impl",
+            "kind": "skill",
+            "title": "Direct Implementation",
+            "x": 100,
+            "y": 100
+          },
+          {
+            "id": "review",
+            "kind": "skill",
+            "title": "对抗式 Review",
+            "x": 320,
+            "y": 100,
+            "onFail": {
+              "candidates": [
+                {
+                  "when": "status != \"ok\" && notes has \"FAILKIND: test\"",
+                  "rewindTo": "impl",
+                  "ticketTitle": "测试不忠实 spec — 修测试断言对齐 then 的 observable（错轴/错字段/race/错 setup），勿改业务实现",
+                  "maxAttempts": 10
+                },
+                {
+                  "when": "status != \"ok\"",
+                  "rewindTo": "impl",
+                  "ticketTitle": "Review 未通过 — 见 .harness/memory/notes/feature-<id>-review-r<N>.md 定点修正",
+                  "maxAttempts": 10
+                }
+              ]
+            }
+          },
+          {
+            "id": "gate_review",
+            "kind": "skill",
+            "title": "脚本机检硬门",
+            "x": 540,
+            "y": 100,
+            "onFail": {
+              "candidates": [
+                {
+                  "when": "status != \"ok\" && notes has \"FAILKIND: test\"",
+                  "rewindTo": "impl",
+                  "ticketTitle": "测试不忠实 spec — 修测试断言对齐 then 的 observable（错轴/错字段），勿改业务实现",
+                  "maxAttempts": 10
+                },
+                {
+                  "when": "status != \"ok\"",
+                  "rewindTo": "impl",
+                  "ticketTitle": "Gate_review 机检未通过（漏 BDD id / 断言过浅 / mock 可观察面 / 测试不绿）— 回 impl 修代码",
+                  "maxAttempts": 10
+                }
+              ]
+            }
+          }
+        ],
+        "edges": [
+          {
+            "from": "impl",
+            "to": "review",
+            "when": "status == \"ok\""
+          },
+          {
+            "from": "review",
+            "to": "gate_review",
+            "when": "status == \"ok\""
+          }
+        ]
+      },
+      "maxIterations": 50
+    },
+    {
+      "id": "st",
+      "title": "系统测试 + BDD 对账",
+      "x": 1860,
+      "y": 100,
+      "onFail": {
+        "rewindTo": "iter",
+        "ticketTitle": "ST 发现真实缺陷 — 已建 bugfix-task，回 iter 修复后重对账",
+        "maxAttempts": 10,
+        "when": "status == \"failed\""
+      }
+    },
+    {
+      "id": "gate_st",
+      "title": "ST BDD 对账硬门",
+      "x": 2080,
+      "y": 100,
+      "onFail": {
+        "rewindTo": "st",
+        "ticketTitle": "ST BDD 对账未通过 — 见未对账/FAIL 的场景清单",
+        "maxAttempts": 10,
+        "when": "status != \"ok\""
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "scan",
+      "to": "bdd",
+      "when": "status == \"ok\""
+    },
+    {
+      "from": "bdd",
+      "to": "gate_bdd",
+      "when": "status == \"ok\""
+    },
+    {
+      "from": "gate_bdd",
+      "to": "decompose"
+    },
+    {
+      "from": "decompose",
+      "to": "gate_decompose",
+      "when": "status == \"ok\""
+    },
+    {
+      "from": "gate_decompose",
+      "to": "init"
+    },
+    {
+      "from": "init",
+      "to": "gate_init",
+      "when": "status == \"ok\""
+    },
+    {
+      "from": "gate_init",
+      "to": "iter"
+    },
+    {
+      "from": "iter",
+      "to": "st"
+    },
+    {
+      "from": "st",
+      "to": "gate_st",
+      "when": "status == \"ok\""
+    }
+  ],
+  "tasksSchemas": {
+    "default": {
+      "requiredFields": {
+        "id": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "default": "failing"
+        }
+      },
+      "recommendedFields": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "dependencies": {
+          "type": "array"
+        }
+      },
+      "userFields": {
+        "category": {
+          "type": "string"
+        },
+        "risk": {
+          "type": "string",
+          "enum": [
+            "critical",
+            "normal",
+            "trivial"
+          ],
+          "description": "业务风险等级，继承自所属 feature（bdd.json feature.risk）；critical 路径需 ≥1 happy + ≥N negative + 独立验证证据，下游 gate_bdd/gate_st 按此分层判定；详见 shared-reference/risk-tagging-guide.md"
+        },
+        "bdd_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "verification_steps": {
+          "type": "array"
+        },
+        "tech_stack": {
+          "type": "object"
+        },
+        "single_round": {
+          "type": "boolean"
+        }
+      },
+      "extensionFieldsAllowed": true,
+      "doneValues": [
+        "passing"
+      ],
+      "example": {
+        "id": 1,
+        "title": "登录表单组件",
+        "status": "failing",
+        "priority": "high",
+        "category": "core",
+        "risk": "critical",
+        "description": "邮箱 + 密码字段、必填校验、submit 触发回调",
+        "bdd_ids": [
+          "BDD-001",
+          "BDD-007"
+        ],
+        "dependencies": [],
+        "verification_steps": [
+          "页面渲染表单",
+          "空提交报错",
+          "成功 submit 调回调"
+        ]
+      }
+    }
+  }
+}

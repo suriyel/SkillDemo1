@@ -1,0 +1,27 @@
+{
+  "bpId": "long-task-simple",
+  "copiedAt": "2026-06-01T00:00:00.000Z",
+  "skills": [
+    { "originalRef": "claude:bp-long-task-simple/scan", "newRef": "claude:bp-long-task-simple/scan", "tool": "claude", "name": "scan", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 },
+    { "originalRef": "claude:bp-long-task-simple/bdd", "newRef": "claude:bp-long-task-simple/bdd", "tool": "claude", "name": "bdd", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 },
+    { "originalRef": "claude:bp-long-task-simple/gate_bdd", "newRef": "claude:bp-long-task-simple/gate_bdd", "tool": "claude", "name": "gate_bdd", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 },
+    { "originalRef": "claude:bp-long-task-simple/decompose", "newRef": "claude:bp-long-task-simple/decompose", "tool": "claude", "name": "decompose", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 },
+    { "originalRef": "claude:bp-long-task-simple/gate_decompose", "newRef": "claude:bp-long-task-simple/gate_decompose", "tool": "claude", "name": "gate_decompose", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 },
+    { "originalRef": "claude:bp-long-task-simple/init", "newRef": "claude:bp-long-task-simple/init", "tool": "claude", "name": "init", "source": "blueprint-native", "schemaPlaceholdersRendered": 1 },
+    { "originalRef": "claude:bp-long-task-simple/gate_init", "newRef": "claude:bp-long-task-simple/gate_init", "tool": "claude", "name": "gate_init", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 },
+    { "originalRef": "claude:bp-long-task-simple/impl", "newRef": "claude:bp-long-task-simple/impl", "tool": "claude", "name": "impl", "source": "blueprint-native", "schemaPlaceholdersRendered": 0, "containerLoop": "iter" },
+    { "originalRef": "claude:bp-long-task-simple/review", "newRef": "claude:bp-long-task-simple/review", "tool": "claude", "name": "review", "source": "blueprint-native", "schemaPlaceholdersRendered": 0, "containerLoop": "iter" },
+    { "originalRef": "claude:bp-long-task-simple/gate_review", "newRef": "claude:bp-long-task-simple/gate_review", "tool": "claude", "name": "gate_review", "source": "blueprint-native", "schemaPlaceholdersRendered": 0, "containerLoop": "iter" },
+    { "originalRef": "claude:bp-long-task-simple/st", "newRef": "claude:bp-long-task-simple/st", "tool": "claude", "name": "st", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 },
+    { "originalRef": "claude:bp-long-task-simple/gate_st", "newRef": "claude:bp-long-task-simple/gate_st", "tool": "claude", "name": "gate_st", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 },
+    { "originalRef": "claude:bp-long-task-simple/explore-guide", "newRef": "claude:bp-long-task-simple/explore-guide", "tool": "claude", "name": "explore-guide", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 }
+  ],
+  "id": "long-task-simple",
+  "title": "long-task-simple",
+  "derivedFrom": {
+    "type": "blueprint",
+    "bpId": "long-task-lite",
+    "note": "去 SRS/Design/wd，唯一源=用户输入文档，BDD 为规约骨架",
+    "derivedAt": "2026-06-01T00:00:00.000Z"
+  }
+}
