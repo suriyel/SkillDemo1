@@ -5,8 +5,9 @@
 //   .harness/memory/plans/project-context.md （下游 impl 消费的全局上下文）
 //
 // 本蓝图无 SRS / Design：不校验 srs_trace、不校验 design §9（NFR/状态机/外依赖）。
-// 校验 REQUIRED_FIELDS / VALID_STATUSES / VALID_PRIORITIES / bdd_ids 格式 /
-// BDD 全覆盖 / 依赖闭包 / project-context.md。
+// 校验 REQUIRED_FIELDS / VALID_STATUSES / VALID_PRIORITIES / req_refs 必填+锚点 /
+// bdd_ids 格式 / BDD 全覆盖 / 依赖闭包 / project-context.md。
+// req_refs 是 impl 的权威实现指针（impl 不读 bdd.json，据 req_refs 读 original-requirements.md）。
 //
 // stdin:  {schemaVersion:2, cwd, loops:{<loopId>:{tasks[],...}}, ...}
 // stdout: 最后一行 JSON {pass:bool, message:string}
@@ -19,6 +20,8 @@ const budget = require('./_context-budget.cjs'); // 上下文预算工具（按�
 // ---- 常量（照搬 validate_features.py:32-37）---------------------------------
 const REQUIRED_FIELDS = ['id', 'category', 'title', 'description', 'priority', 'status'];
 const BDD_ID_PATTERN = /^BDD-\d+$/;
+// req_refs 需求锚点（与 gate_decompose / gate_bdd 同源）：impl 据此读 original-requirements.md 实现。
+const REQ_REF_ANCHOR = /(original-requirements\.md|\bL\d+\b|[\w./\\-]+:\d+)/;
 const VALID_STATUSES = new Set(['failing', 'passing']);
 const VALID_PRIORITIES = new Set(['high', 'medium', 'low']);
 const VALID_LANGUAGES = new Set(['python', 'java', 'javascript', 'typescript', 'c', 'cpp', 'c++', 'todo']);
@@ -74,7 +77,21 @@ function validateTasksArray(tasks, loopId) {
 
     // 本蓝图无 SRS / FR-id：不校验 srs_trace（残留字段忽略不报错，向后兼容）。
 
-    // bdd_ids（L3 BDD 指针）—— 若提供须为 BDD-\d+ 字符串数组
+    // req_refs（权威实现指针）—— 必填非空数组 + 每项含需求锚点（impl 据此读 original-requirements.md）
+    if (!Array.isArray(feat.req_refs) || feat.req_refs.length === 0) {
+      errors.push(prefix + ' (id=' + fid + '): req_refs 必须是非空数组（impl 据此读 original-requirements.md 实现；无则 impl 无权威源）');
+    } else {
+      for (let ri = 0; ri < feat.req_refs.length; ri++) {
+        const r = feat.req_refs[ri];
+        if (typeof r !== 'string' || !r.trim()) {
+          errors.push(prefix + ' (id=' + fid + '): req_refs[' + ri + '] 必须是非空字符串');
+        } else if (!REQ_REF_ANCHOR.test(r)) {
+          errors.push(prefix + ' (id=' + fid + '): req_refs[' + ri + '] 缺需求锚点（应含 "original-requirements.md L<起>-L<止>" 或 "<file>:line"），当前 "' + r.slice(0, 40) + '"');
+        }
+      }
+    }
+
+    // bdd_ids（L3 BDD 指针，仅供下游验证）—— 若提供须为 BDD-\d+ 字符串数组
     if (feat.bdd_ids !== undefined && feat.bdd_ids !== null) {
       if (!Array.isArray(feat.bdd_ids)) {
         errors.push(prefix + ' (id=' + fid + '): bdd_ids 必须是数组');

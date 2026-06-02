@@ -7,7 +7,7 @@ description: 脚本机检硬门 — loop iter 体内 review 之后；运行 gate
 
 本节点是「双层质量保障」的客观事实层：上游 review 是 LLM 主观挑刺，本门是脚本机检客观事实兜底——**review 漏判的客观缺口由本门抓回**。
 
-**与 review 互补**：review 看语义（断言深度判定/断对 observable/mock 反模式），本门看事实（测试是否真绿/BDD id 是否真存在/标记附近是否有真断言/then 精确值是否命中）。本蓝图无 SRS / Design / wd，故**不检**状态机闭环（design §9.2）与 NFR 实现痕迹（design §9.1）。
+**与 review 互补**：review 看语义（断言深度判定/断对 observable/mock 反模式），本门看事实（测试是否真绿/BDD id 是否真存在/标记附近是否有真断言/then 精确值是否命中）。**测试由独立的 ut 节点据 bdd.json 编写**（非实现作者 impl 自证），故 grep BDD 标记 / then 精确值的机检合法、保留全部牙齿。本蓝图无 SRS / Design / wd，故**不检**状态机闭环（design §9.2）与 NFR 实现痕迹（design §9.1）。
 
 **开始时宣告**："I'm using the gate_review skill. Time to verify objective facts."
 
@@ -23,7 +23,10 @@ description: 脚本机检硬门 — loop iter 体内 review 之后；运行 gate
    - **`blocked === true`**（脚本判定环境/上下文问题，如 state.json 不可读、bdd.json 缺失、纯 ENV 签名）→ `{{ADVANCE_BLOCKED notes=<message>}}`
    - **`pass === false && blocked === false`**（内容缺口）→ `{{ADVANCE_FAIL notes=<脚本 message 原文>}}`
 
-   脚本 message 已带 `[CONTENT-GAP][FAILKIND: impl]` 或 `[ENV-FIXABLE][FAILKIND: env]` 前缀，**原样回传即可**——blueprint.json 的 onFail 候选会把它路由回 `impl`（本蓝图无 wd，故无 `FAILKIND: design` 折返；机检缺口一律由 impl 修代码/测试）。若脚本判 `FAILKIND: test`（测试不忠实 spec）也照样回传，路由同样回 impl 修测试。
+   脚本 message 已带 `[CONTENT-GAP][FAILKIND: test]` / `[CONTENT-GAP][FAILKIND: impl]` / `[ENV-FIXABLE][FAILKIND: env]` 前缀，**原样回传即可**——blueprint.json 的 onFail 候选据此路由：
+   - `FAILKIND: test`（测试编写缺口：漏 BDD 标记 / 断言过浅 / then 精确值无命中）→ 折返 **ut** 补/修测试（测试由独立的 ut 节点据 bdd.json 编写，非代码作者自证，故机检合法）；
+   - `FAILKIND: impl`（实现行为缺口：测试不绿非 env / 边界契约违约）→ 折返 **impl** 修实现；
+   - 并存时脚本已按 **impl 优先**标 impl。本蓝图无 wd，故无 `FAILKIND: design` 折返。
 
 ## 关键约束
 

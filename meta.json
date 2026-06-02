@@ -10,6 +10,7 @@
     { "originalRef": "claude:bp-long-task-simple/init", "newRef": "claude:bp-long-task-simple/init", "tool": "claude", "name": "init", "source": "blueprint-native", "schemaPlaceholdersRendered": 1 },
     { "originalRef": "claude:bp-long-task-simple/gate_init", "newRef": "claude:bp-long-task-simple/gate_init", "tool": "claude", "name": "gate_init", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 },
     { "originalRef": "claude:bp-long-task-simple/impl", "newRef": "claude:bp-long-task-simple/impl", "tool": "claude", "name": "impl", "source": "blueprint-native", "schemaPlaceholdersRendered": 0, "containerLoop": "iter" },
+    { "originalRef": "claude:bp-long-task-simple/ut", "newRef": "claude:bp-long-task-simple/ut", "tool": "claude", "name": "ut", "source": "blueprint-native", "schemaPlaceholdersRendered": 0, "containerLoop": "iter" },
     { "originalRef": "claude:bp-long-task-simple/review", "newRef": "claude:bp-long-task-simple/review", "tool": "claude", "name": "review", "source": "blueprint-native", "schemaPlaceholdersRendered": 0, "containerLoop": "iter" },
     { "originalRef": "claude:bp-long-task-simple/gate_review", "newRef": "claude:bp-long-task-simple/gate_review", "tool": "claude", "name": "gate_review", "source": "blueprint-native", "schemaPlaceholdersRendered": 0, "containerLoop": "iter" },
     { "originalRef": "claude:bp-long-task-simple/st", "newRef": "claude:bp-long-task-simple/st", "tool": "claude", "name": "st", "source": "blueprint-native", "schemaPlaceholdersRendered": 0 },

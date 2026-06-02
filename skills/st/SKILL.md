@@ -49,7 +49,7 @@ Read `{{HARNESS_MEMORY_DIR}}/plans/bdd.json`，对**每一条** scenario，在**
 ### 7. 缺陷 Triage + 逃逸分析
 - 按 Critical/Major/Minor/Cosmetic 分级；Critical/Major 阻塞 Go。
 - 每个缺陷标 **Escaped From**（Unit / Behavior-Gate / Mock-Leaked / Integration / Spec）以暴露系统性缺口。
-- 存在 Critical/Major（含任一真实环境 BDD 对账 FAIL）：本节点**不改实现代码**（ST 期间无新特性）；改为按 Step 9 为每个根因缺陷建一条 `bugfix-task` 追加进 `iter` loop，由引擎回卷走 iter loop（impl→review→gate_review）定向修复并补回归测试。
+- 存在 Critical/Major（含任一真实环境 BDD 对账 FAIL）：本节点**不改实现代码**（ST 期间无新特性）；改为按 Step 9 为每个根因缺陷建一条 `bugfix-task` 追加进 `iter` loop，由引擎回卷走 iter loop（impl→ut→review→gate_review）定向修复并补回归测试。
 
 ### 8. 验收报告（结构化 JSON —— 权威产物，供 gate_st 机检核实）
 生成 `{{HARNESS_MEMORY_DIR}}/plans/st-acceptance.json`（**这是 gate_st 校验的权威验收报告**，字段如下）：
@@ -89,7 +89,7 @@ Read `{{HARNESS_MEMORY_DIR}}/plans/bdd.json`，对**每一条** scenario，在**
   **B. 存在真实缺陷**（任一真实环境 BDD 对账 FAIL，或未关闭 Critical/Major）→ 为**每个根因缺陷**建一条 `bugfix-task` 追加进 `iter` loop 回卷修复，**不在本节点改代码**：
   1. 读 {{TASKS_GET}} 拿现有任务（取已用 id 以避免冲突）。
      - **去重（关键，杜绝同一 bug 反复开单）**：每个失败 bdd_id 先查 {{TASKS_GET}} / {{TICKETS_GET}} 是否**已有**针对同一 bdd_id（或同一根因）的 bugfix-task——**已有则不重复建**，只在 notes 注明复发。**Step 1 已强制干净重启**，故已修缺陷不应再因陈旧产物复现；若某 bdd_id 此前已修复验证、本轮在**新产物**上**仍 FAIL**（确非陈旧所致）→ 是真·顽固缺陷，**不再机械重开同款 task**，改 {{ADVANCE_BLOCKED notes=<bdd_id X 多轮修复在新产物上仍不过，需人工诊断根因>}} 交人工。
-  2. **归因**：把失败 bdd_id 映射到**拥有它的 work-unit task**（查 {{TASKS_GET}} 各 task 的 `bdd_ids[]`），bugfix-task 的 `dependencies` 指向该 owner task。
+  2. **归因**：把失败 bdd_id 映射到**拥有它的 work-unit task**（查 {{TASKS_GET}} 各 task 的 `bdd_ids[]`），bugfix-task 的 `dependencies` 指向该 owner task；**`req_refs` 取该失败 bdd_id 对应 `bdd.json` 场景的 `derivation` 需求锚点**（`original-requirements.md L…`）——取不到则沿用 owner task 的 `req_refs`。这是回卷后 impl 据以读权威需求的指针，**不可缺**（impl 不读 bdd.json）。
   3. 构造 items 数组写入 `.harness/blueprint/tasks/iter-add.json`，每条形如（保持泛化，按实际缺陷填）：
      ```json
      [{
@@ -98,6 +98,7 @@ Read `{{HARNESS_MEMORY_DIR}}/plans/bdd.json`，对**每一条** scenario，在**
        "category": "bugfix",
        "title": "修复 <失败场景id>：<一句缺陷摘要>",
        "description": "<根因 + 定向修复方案 + 复现步骤>",
+       "req_refs": ["original-requirements.md L<起>-L<止> | <该缺陷涉及的需求摘要>"],
        "bdd_ids": ["<失败场景 id>"],
        "dependencies": ["<拥有该 bdd_id 的 owner task id>"]
      }]

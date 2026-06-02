@@ -1,6 +1,6 @@
 ---
 name: bdd
-description: "long-task-simple 的需求规约节点（取代 req）：直接据用户输入文档产出结构化 BDD 可执行规约（bdd.json：按 feature 分组、每场景含 given/when/then/examples/derivation；FIRST 原则、聚焦关键功能点、含多域组合场景），用输入/验证反推完备性；缺口当场用 AskUserQuestion 向用户澄清（无 SRS、无 req 可打回），完备后交人评审。下游有 gate_bdd 硬门校验产物规范性。BDD-xxx 场景 id 是全程唯一溯源货币。"
+description: "long-task-simple 的需求规约节点（取代 req）：直接据用户输入文档产出结构化 BDD 可执行规约（bdd.json：按 feature 分组、每场景含 given/when/then/examples/derivation；FIRST 原则、聚焦关键功能点、含多域组合场景），用输入/验证反推完备性；缺口当场用 AskUserQuestion 向用户澄清（无 SRS、无 req 可打回），完备后交人评审。下游有 gate_bdd 硬门校验产物规范性。BDD 是对抗验证 oracle（非实现依据，impl 据 req_refs 读需求文档实现）；BDD-xxx 场景 id 是下游验证（ut/review/gate_review/st）的溯源货币。"
 ---
 
 **语言规则**：用中文（简体）回复用户。用例的描述文本（feature/scenario 名、given/when/then/examples 的值、报告与面向用户的输出）用中文；**JSON 字段名（key）、代码标识符、`BDD-xxx` 编号保持英文**。
@@ -10,7 +10,7 @@ description: "long-task-simple 的需求规约节点（取代 req）：直接据
 输入：**用户输入文档**（启动原话 `{{HARNESS_MEMORY_DIR}}/intent/user-original-intent.md` + 本会话粘贴/上传的需求文档）+ scan 节点产出的存量约定 + 存量代码库。
 动作：把用户输入文档的关键功能点直接翻成可执行行为规约（BDD 场景，Gherkin 语义），落成**结构化 JSON**（`{{HARNESS_MEMORY_DIR}}/plans/bdd.json`，便于下游 `gate_bdd` 硬门机器校验规范性）；在「写得出 / 写不出 given-when-then」的过程中反推完备性——能写全的留作评审产物，写不全的（不明确 / 未提及的场景）**当场用 `AskUserQuestion` 向用户澄清**（本蓝图无 SRS、无独立 req 节点可打回）。
 
-> **本蓝图无 SRS / Design**。用户输入文档即唯一权威需求源；BDD 场景即可执行规约；`BDD-xxx` 场景 id 是 decompose / init / impl / gate_review / st 全程的唯一溯源货币（无 `FR-xxx`）。
+> **本蓝图无 SRS / Design**。用户输入文档（`original-requirements.md`）即唯一权威需求源——下游 impl 据 `req_refs` 读它实现（impl 不读 bdd.json）。BDD 场景是**对抗验证 oracle**：`BDD-xxx` 场景 id 是 ut / review / gate_review / st 的验证溯源货币（decompose 据各场景 `derivation` 的需求锚点把它映射到 work-unit；无 `FR-xxx`）。
 
 <HARD-GATE>
 BDD 描述的是「系统应当表现出的可观察行为（WHAT/行为）」，不是「如何实现（HOW）」。**禁止读取或依赖任何设计/实现层文档**（即便因重跑 / brownfield 残留而存在）。唯一允许的需求来源：用户输入文档 + `notes/rules/`（scan 存量约定）+ 存量代码既定行为。
@@ -117,7 +117,7 @@ BDD 描述的是「系统应当表现出的可观察行为（WHAT/行为）」�
   - `risk=trivial` 的 feature：≥1 happy 即可，异常类可豁免
 - **不得为绕门硬编无意义场景**。
 
-> **场景 `id` 是下游唯一追溯锚点**：decompose 据此把场景分组成 feature、init 写入 `task.bdd_ids`、impl 用该 id 给对应单元测试打标，环内 `gate_review` 与末段 `gate_st` 据此机检「每个场景都有测试覆盖 / 都被对账」。故 **id 一旦分配不得变动**——重跑（被 gate_bdd 打回）时保留既有场景 id，只给本轮新增场景续号。
+> **场景 `id` 是下游验证的追溯锚点**：decompose 据各场景 `derivation` 的需求锚点把场景映射到 work-unit（挂 `bdd_ids`）、init 写入 `task.bdd_ids`、**ut 用该 id 给对应测试打标**，环内 `gate_review` 与末段 `gate_st` 据此机检「每个场景都有测试覆盖 / 都被对账」。故 **id 一旦分配不得变动**——重跑（被 gate_bdd 打回）时保留既有场景 id，只给本轮新增场景续号。
 
 ### 3.2 FIRST 原则（适配 BDD 场景质量）
 

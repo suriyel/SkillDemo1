@@ -1,13 +1,19 @@
 ---
 name: decompose
-description: "当 BDD 已批准、尚未生成 task 列表时使用 — 把 bdd.json 的 behavior feature / 场景按上下文预算分组合并为 work-unit feature（每个 ≈ 一个 Worker 会话能独立做完、被一组连贯 BDD 场景独立验证），产出 feature-plan.json 供下游 init 机械灌入 loop。本节点是颗粒度的单一决策点，不可跳过。本蓝图无 SRS / FR-id，分组以 BDD 场景为单位。"
+description: "当 BDD 已批准、尚未生成 task 列表时使用 — 按【用户需求文档 original-requirements.md】的能力切分 work-unit feature（每个 ≈ 一个 Worker 会话能独立做完的需求单元），为每个 work-unit 记需求锚点 req_refs（impl 的权威指针）并映射其覆盖的 bdd_ids（仅供下游验证），产出 feature-plan.json 供下游 init 机械灌入 loop。本节点是颗粒度的单一决策点，不可跳过。本蓝图无 SRS / FR-id：切分主轴是用户需求，BDD 退为验证 oracle。"
 ---
 
 **语言规则**：用中文（简体）回复用户。所有面向用户的输出用中文。Skill 名称、代码标识符、JSON 字段名保持英文。
 
-# BDD → Feature 分组（按预算贪心填充）
+# 需求 → Feature 分组（按需求切、按预算控大小）
 
-把已批准 `bdd.json` 的 behavior feature / 场景分组合并成一组 **work-unit feature**——每个 work-unit feature ≈ **一个 Worker 会话能独立做完、且能被一组连贯 BDD 场景独立验证**的单元。本蓝图无 SRS / FR-id：分组的原子单位是 **BDD 场景（`BDD-xxx`）**，每个 work-unit feature 覆盖一组场景（`bdd_ids[]`），按真实上下文预算填到接近窗口上限（吃满窗口、摊薄 impl 每迭代重读 bdd.json / 输入文档的固定开销）。
+把**用户需求文档**（`{{HARNESS_MEMORY_DIR}}/intent/original-requirements.md`）的能力切分成一组 **work-unit feature**——每个 work-unit feature ≈ **一个 Worker 会话能独立做完**的需求单元。
+
+> **切分主轴 = 用户需求（不是 BDD）**。本蓝图无 SRS / FR-id：以 `original-requirements.md` 的能力（段落/章节）为原子单位贪心合并成内聚的 work-unit，**为每个 work-unit 记 `req_refs`（覆盖的需求行号区间 + 摘要）——这是下游 impl 的权威实现指针**。`bdd.json` 场景退为「验证 oracle」：每个 work-unit 再**映射**出其覆盖的 `bdd_ids[]`（取 derivation 锚点落在本 work-unit 需求区间内的场景），仅供下游 ut/review/gate_review/st 验证用，**不是分组依据、也不是 impl 实现依据**。
+>
+> 为何不再「按 bdd 切」：BDD 是散文需求被拆成的离散场景，按它切会让 work-unit 变成「一袋可能不完整的场景」、丢掉散文里的隐含需求——直接 prompt 全对、走流程漏一片的根因。按需求切 + impl 读原文，才忠实。
+
+**预算只用来控大小、不改主轴**：仍按真实上下文预算把 work-unit 控制在「一个会话能装下」（用其映射的 BDD 场景数估投影），避免单 work-unit 过肥；但**不为吃满窗口而把不相关的需求并进来**。
 
 产物是 `{{HARNESS_MEMORY_DIR}}/plans/feature-plan.json`。本节点**不**判 tech_stack、不写 tool-commands-guide、不生成 project-context.md、不灌 loop——这些都在下游 init。
 
@@ -15,8 +21,8 @@ description: "当 BDD 已批准、尚未生成 task 列表时使用 — 把 bdd.
 
 | 文档 | 位置 | 用途 |
 |------|------|------|
-| BDD | `{{HARNESS_MEMORY_DIR}}/plans/bdd.json` | `features[]`（behavior feature 名 + `risk`）+ `scenarios[].id`；分组的原子单位，据此给每个 work-unit feature 算 `bdd_ids[]` 并估场景数 |
-| 输入文档 | `{{HARNESS_MEMORY_DIR}}/intent/original-requirements.md` | 能力概览（命名 work-unit feature、判优先级/依赖时参考）|
+| 用户需求文档 | `{{HARNESS_MEMORY_DIR}}/intent/original-requirements.md` | **切分主轴**：按能力点（带行号区间）切 work-unit、算 `req_refs`、命名、判优先级/依赖 |
+| BDD | `{{HARNESS_MEMORY_DIR}}/plans/bdd.json` | 验证 oracle：据 `scenarios[].derivation` 的需求锚点把场景**映射**到所属 work-unit 算 `bdd_ids[]`、并估场景数控大小（`features[].risk` 供优先级映射）|
 | 拆分策略 | `{{HARNESS_MEMORY_DIR}}/plans/split-strategy.json` | conservative / balanced / aggressive（缺则兜底 aggressive） |
 | 校准 | `{{HARNESS_MEMORY_DIR}}/plans/calibration.json` | 实测 perScenarioTokens（若 calibrate 节点产出；本蓝图默认无 calibrate → unmeasured，用策略默认值）|
 
@@ -47,20 +53,20 @@ node {{SCRIPTS}}/_context-budget.cjs --strategy <策略> --fixed-bytes <固定�
 **一句话亮给用户**（避免黑盒），例：
 > 「当前模型窗口 200K，策略=激进，单 feature 预算 ~150K token，单场景成本 5.5K（未校准默认），单 feature 可容约 27 个 BDD 场景；下面按此预算分组。」
 
-## Step 3 — 分组建议
+## Step 3 — 按需求切分组建议
 
-1. 从 `bdd.json` 列出所有 behavior feature（名 + risk + 其 `scenarios[].id`）。
-2. 估每个候选分组的 BDD 场景数 = 并入该组的各 behavior feature 的 `scenarios[]` 去重计数之和。
-3. 在**内聚边界内**（共享同一接口 / 角色 / 领域实体）贪心合并相关 behavior feature，使各组场景数接近 `maxScenariosPerFeature`。**填充强度按策略**：激进 ~90%、平衡 ~70-80%、保守 ≤70%。
+1. **精读 `{{HARNESS_MEMORY_DIR}}/intent/original-requirements.md`，列出用户需求的能力点**（每个能力记其在原文的行号区间 `L<起>-L<止>` + 一句摘要）。这是切分的原子单位。
+2. **在内聚边界内**（共享同一接口 / 角色 / 领域实体 / 用户目标）贪心合并相关能力，使每个 work-unit 是「一个会话能独立做完」的连贯需求单元。
+3. **用预算控大小**：为每个候选 work-unit 估其映射的 BDD 场景数（Step 5 的映射规则：derivation 锚点落在本 work-unit 需求区间内的场景去重计数），让投影 ≤ `overflowCeil × 窗口`（规划目标，非硬门）；某能力映射场景过多致超窗 → 把该能力按子能力再切。**填充强度按策略**：激进 ~90%、平衡 ~70-80%、保守 ≤70%。
 4. **硬约束**：
-   - 尽量让任一组场景数投影 ≤ `overflowCeil × 窗口`（规划目标，非硬门）；超了下游 gate_decompose **只告警、不强制拆**。
-   - **不为凑满并入无关 behavior feature**（伤内聚、加跨节点漂移）。
-   - 避免过度碎片化：一堆只含 1-2 个场景的薄 feature 会被 gate_decompose 按 S5 同源兄弟聚合打回——同源（同接口/角色/实体）的薄 feature 应合并成一个「特性族」work-unit feature。
+   - **切分主轴是需求，不是凑满窗口**：**不为凑满把不相关需求并进来**（伤内聚、加跨节点漂移）。
+   - 投影超 `overflowCeil × 窗口` → 下游 gate_decompose **只告警、不强制拆**。
+   - 避免过度碎片化：一堆只覆盖极少需求/场景的薄 work-unit 会被 gate_decompose 按 S5 同源兄弟聚合打回——同源（同接口/角色/实体）的薄需求应合并成一个「特性族」work-unit。
 
-呈现建议分组：
+呈现建议分组（按需求 + 摘要 + 映射场景数）：
 ```
-Feature 1：[title] — 覆盖 behavior「登录」「会话」（理由：共同领域；~12 场景 BDD-001..012）
-Feature 2：[title] — 覆盖 behavior「导出」（理由：独立功能；~8 场景）
+Feature 1：[title] — 覆盖需求「登录」「会话」(original-requirements.md L12-L46；共同领域) → 映射 ~12 场景 BDD-001..012
+Feature 2：[title] — 覆盖需求「导出」(L80-L120；独立功能) → 映射 ~8 场景
 ...
 ```
 
@@ -68,9 +74,14 @@ Feature 2：[title] — 覆盖 behavior「导出」（理由：独立功能；~8
 
 通过 AskUserQuestion 或自由响应让用户确认 / 调整分组（合并、重命名、重排、改依赖）。若 Step 0 判定可单轮，把「单轮 / 多 feature」选项一并呈现。
 
-## Step 5 — 计算每 feature 的 bdd_ids（权威 BDD 指针）
+## Step 5 — 算 req_refs（impl 权威指针）+ 映射 bdd_ids（验证 oracle）
 
-对每个 work-unit feature：`bdd_ids` = 并入本 feature 的各 behavior feature 的所有 `scenarios[].id`，去重。**这是下游 impl / review / gate_review 的权威 BDD 指针——也是本蓝图唯一的需求溯源货币（无 FR / srs_trace）。**
+对每个 work-unit feature：
+
+1. **`req_refs`（权威实现指针，必产）**：本 work-unit 覆盖的需求在 `original-requirements.md` 的行号区间 + 摘要，每项形如 `"original-requirements.md L<起>-L<止> | <一句摘要>"`（或对存量约定 `notes/rules/<file>:line | <摘要>`）。**这是下游 impl 据以读原文实现的权威指针**——impl 不读 bdd.json，全靠 req_refs 定位要实现的需求片段。
+2. **`bdd_ids`（验证 oracle，映射得到）**：取 `bdd.json` 中 `derivation` 锚点（`original-requirements.md L<x>` 或存量 `file:line`）**落在本 work-unit 的 req_refs 区间内**的场景 id，去重。
+   - **全覆盖铁律**：`bdd.json` 每条场景都必须被某个 work-unit 的 `bdd_ids` 认领（gate_decompose 硬门：有孤立场景即 fail）。某场景 derivation 锚点不清晰/锚到 scan → 归到拥有其相关能力的 work-unit，**不得漏**。
+   - `bdd_ids` 仅供下游 ut（写测试）/ review / gate_review / st（验证）使用，**非 impl 实现依据、非分组主轴**。
 
 ## Step 6 — 落盘 feature-plan.json
 
@@ -85,6 +96,10 @@ Write `{{HARNESS_MEMORY_DIR}}/plans/feature-plan.json`（⚠ 本形态是 decomp
   "features": [
     {
       "title": "登录与会话",
+      "req_refs": [
+        "original-requirements.md L12-L28 | 邮箱+密码登录字段与校验规则",
+        "original-requirements.md L40-L46 | 登录成功后的会话维持与登出"
+      ],
       "bdd_ids": ["BDD-001", "BDD-007"],
       "priority": "high",
       "dependencies": [],
@@ -98,18 +113,21 @@ Write `{{HARNESS_MEMORY_DIR}}/plans/feature-plan.json`（⚠ 本形态是 decomp
 
 字段规则：
 - 顶层 `single_round`（布尔）：单轮模式 = `true`（Step 0/4 判定写入）；多 feature = `false`。下游 gate_decompose 据此放宽碎片化判定、init 据此传播标志。
-- `bdd_ids`：Step 5 算出的去重场景 id，**非空**（每个 work-unit feature 至少覆盖一个场景；本蓝图无「纯内部无场景 feature」概念）。
-- `priority`：取该组各 behavior feature `risk` 的最高映射（critical→high / normal→medium / trivial→low），或用户指定；默认 `"medium"`。
+- `req_refs`（**必产、非空数组**）：Step 5 的需求锚点，每项形如 `"original-requirements.md L<起>-L<止> | <摘要>"` 或 `"<file>:line | <摘要>"`。**这是下游 impl 的权威实现指针**（gate_decompose 硬校验存在+非空+锚点格式）。
+- `bdd_ids`：Step 5 映射出的去重场景 id，**非空**（每个 work-unit 至少覆盖一个场景）；**仅供下游验证**，非 impl 实现依据、非分组主轴。
+- `priority`：取该组所覆盖 BDD 场景 `risk` 的最高映射（critical→high / normal→medium / trivial→low），或用户指定；默认 `"medium"`。
 - `dependencies`：从输入文档显式依赖或用户指定推断；无则 `[]`（依赖只引用本 plan 内其它 feature 的语义顺序，下游 init 转 task id 时落实）。
-- `description`：用户给出或从所覆盖 behavior feature 派生。
+- `description`：本 work-unit 的需求范围一句话摘要（自包含，供 review/st 与人读；impl 以 req_refs + 原文为准）。
 - **无 `srs_trace` 字段**（本蓝图无 FR-id）。
 
 ## Step 7 — 自检后推进
 
 落盘后自检（下游 gate_decompose 会硬门复核同样几条）：
+- 每个 feature 的 `req_refs` **非空**且每项锚点格式合法（`original-requirements.md L…` 或 `file:line`）；
+- `req_refs` 合起来覆盖了被切分的全部需求能力（无遗漏的用户需求）；
 - `bdd.json` 每个场景至少被一个 feature 的 `bdd_ids` 认领，且无 ghost id（不存在的场景 id）；
 - 每个 feature 的 `bdd_ids` 非空；
-- 无过度碎片化（薄 feature 已按 S5 聚合）。（投影超窗只是告警、不阻断。）
+- 无过度碎片化（薄 work-unit 已按 S5 聚合）。（投影超窗只是告警、不阻断。）
 
 自检通过 → {{ADVANCE_OK}}。
 输入文档缺失/不可读无法分组 → {{ADVANCE_BLOCKED notes=<原因>}}。
@@ -120,8 +138,10 @@ bp-advance 是本回合最后一个动作，调用后立即结束本回合。
 
 | 合理化 | 正确回应 |
 |--------|---------|
-| "给 feature 加个 srs_trace 才完整" | 本蓝图无 SRS / FR-id。work-unit feature 靠 `bdd_ids` 锚定覆盖的场景，srs_trace 是不存在的概念。 |
-| "一个 behavior feature 一个 work-unit" | 同源薄 feature 会引发场景碎片化 + 浪费每会话固定开销，gate_decompose 会打回按 S5 聚合。 |
-| "凑满窗口，把不相关 behavior 也并进来" | 伤内聚、加跨节点漂移；只在共享接口/角色/实体的内聚边界内合并。 |
-| "校准没测到就不管预算" | unmeasured 时用策略默认 perScenarioTokens 照常按预算分组，别退回拍脑袋。 |
+| "按 bdd.json 的 behavior feature 切最省事" | 切分主轴是**用户需求**（original-requirements.md），不是 BDD。按 bdd 切会丢散文里的隐含需求；用 req_refs 锚需求、bdd_ids 仅映射验证。 |
+| "给 feature 加个 srs_trace 才完整" | 本蓝图无 SRS / FR-id。work-unit 靠 `req_refs` 锚需求（impl 指针）+ `bdd_ids` 锚验证场景，srs_trace 是不存在的概念。 |
+| "req_refs 我先空着，下游能从 bdd_ids 推" | 不行。impl 不读 bdd.json，全靠 req_refs 定位需求；req_refs 空 = impl 无权威源，gate_decompose 硬 fail。 |
+| "一个需求一个 work-unit" | 同源薄需求会引发碎片化 + 浪费每会话固定开销，gate_decompose 会打回按 S5 聚合。 |
+| "凑满窗口，把不相关需求也并进来" | 伤内聚、加跨节点漂移；只在共享接口/角色/实体/用户目标的内聚边界内合并。 |
+| "校准没测到就不管预算" | unmeasured 时用策略默认 perScenarioTokens 照常按预算控大小，别退回拍脑袋。 |
 | "顺手把 items[] 灌进 loop" | 灌 loop 是 init 的职责；本节点只产出 feature-plan.json。 |

@@ -15,8 +15,8 @@ description: "当 BDD 已批准、feature-plan.json 已过 gate_decompose、item
 
 | 文档 | 位置 | 提供内容 |
 |------|------|---------|
-| **Feature 计划** | `{{HARNESS_MEMORY_DIR}}/plans/feature-plan.json` | 上游 decompose 产出、已过 gate_decompose 的权威 work-unit feature 分组（每 feature 含 `bdd_ids` / `priority` / `dependencies` / `title` / `description`；**无 srs_trace**）；本节点据此**机械填充** items[]，不重做分组 |
-| **BDD 用例** | `{{HARNESS_MEMORY_DIR}}/plans/bdd.json` | 行为场景（`features[].scenarios[].id` = `BDD-xxx`，每条带 given/when/then/examples）；verification_steps 从对应场景 then 派生 |
+| **Feature 计划** | `{{HARNESS_MEMORY_DIR}}/plans/feature-plan.json` | 上游 decompose 产出、已过 gate_decompose 的权威 work-unit 分组（每 feature 含 `req_refs` / `bdd_ids` / `priority` / `dependencies` / `title` / `description`；**无 srs_trace**）；本节点据此**机械填充** items[]，不重做分组 |
+| **BDD 用例** | `{{HARNESS_MEMORY_DIR}}/plans/bdd.json` | 行为场景（`features[].scenarios[].id` = `BDD-xxx`，每条带 given/when/then/examples）；仅用于派生 verification_steps（供 review/st，非 impl 输入）|
 | **用户输入文档** | `{{HARNESS_MEMORY_DIR}}/intent/original-requirements.md`（+ `user-original-intent.md`） | 用户原话；提取项目级约束/假设、背景对齐 |
 | **存量约定** | `{{HARNESS_MEMORY_DIR}}/notes/rules/`（若存在） | scan 节点提取的构建/测试/编码约定；tech_stack 与 tool-commands-guide 的首要来源 |
 
@@ -54,13 +54,15 @@ description: "当 BDD 已批准、feature-plan.json 已过 gate_decompose、item
 
    a. **读分组方案**：Read `{{HARNESS_MEMORY_DIR}}/plans/feature-plan.json`，取 `features[]`。
    b. **1:1 转写**：每个 feature 转为一个 item：
-      - `bdd_ids` / `title` / `description` / `priority`（缺省 `"medium"`）**原样**取自 feature；**`bdd_ids` 是 impl / review / gate_review 的权威 BDD 指针**（decompose 已算、gate_decompose 已校验）。**无 `srs_trace` 字段**（本蓝图无 FR-id）。
+      - `req_refs` / `bdd_ids` / `title` / `description` / `priority`（缺省 `"medium"`）**原样**取自 feature。
+        - **`req_refs` 是 impl 的权威实现指针**（impl 据此读 `original-requirements.md` 对应片段实现；decompose 已算、gate_decompose 已校验）——**不可漏转**，gate_init 硬校验每 task `req_refs` 非空 + 锚点格式。
+        - `bdd_ids` **仅供下游 ut / review / gate_review / st 验证用**（非 impl 实现依据）。**无 `srs_trace` 字段**（本蓝图无 FR-id）。
       - `id`：顺序唯一整数（1, 2, 3…）。
       - `status`：始终 `"failing"`。
       - `category`：派生非空（如 `core` / `support`；gate_init REQUIRED_FIELDS 要求非空）。
       - `risk`（可选）：取该 feature 所覆盖 BDD feature 的最高 risk（供下游分层判定）。
       - `dependencies`：把 `feature.dependencies` 里引用的前序 feature 映射为对应 item 的 `id`；无则空数组。
-      - `verification_steps`（可选）：把本 task 的 `bdd_ids` 对应 `bdd.json` 场景的 given/when/then 整合为行为场景：
+      - `verification_steps`（可选；**供 review / st 与人读，不进 impl 阅读清单**——impl 据 `req_refs` + 原文实现，不看 BDD 派生物）：把本 task 的 `bdd_ids` 对应 `bdd.json` 场景的 given/when/then 整合为行为场景：
         - 每步必须是含 Given/When/Then 结构的行为场景，非简单断言。
         - 错误：`"Login page displays correctly"`（无动作、无断言）。
         - 正确：`"Given a registered user, when POST /api/orders with valid payload, then response 201 with order ID; and GET /api/orders/{id} returns the created order with correct fields"`。
@@ -88,8 +90,9 @@ description: "当 BDD 已批准、feature-plan.json 已过 gate_decompose、item
     "priority": "high", // L2 optional: string; enum=["high","medium","low"]
     "category": "core", // L3 optional: string
     "risk": "critical", // L3 optional: string; enum=["critical","normal","trivial"]
-    "bdd_ids": ["BDD-001","BDD-007"], // L3 optional: array; 原样取自 feature-plan.json 该 feature 的 bdd_ids（权威 BDD 指针；本蓝图唯一溯源货币，无 srs_trace）
-    "verification_steps": ["页面渲染表单","空提交报错","成功 submit 调回调"], // L3 optional: array
+    "req_refs": ["original-requirements.md L12-L28 | 登录字段与校验","original-requirements.md L40-L46 | 会话与登出"], // L3 必填非空: array; 原样取自 feature-plan.json；impl 据此读 original-requirements.md 实现的权威指针（gate_init 硬校验非空+锚点）
+    "bdd_ids": ["BDD-001","BDD-007"], // L3 optional: array; 原样取自 feature-plan.json；仅供 ut/review/gate_review/st 验证（非 impl 实现依据，无 srs_trace）
+    "verification_steps": ["页面渲染表单","空提交报错","成功 submit 调回调"], // L3 optional: array; 供 review/st 与人读，不进 impl 阅读清单
     "tech_stack": {}, // L3 optional: object
     "single_round": false // L3 optional: boolean
   }
@@ -132,4 +135,4 @@ description: "当 BDD 已批准、feature-plan.json 已过 gate_decompose、item
      --constraints-file={{HARNESS_MEMORY_DIR}}/plans/_constraints.json \
      --assumptions-file={{HARNESS_MEMORY_DIR}}/plans/_assumptions.json
    ```
-4. 产出：`{{HARNESS_MEMORY_DIR}}/plans/project-context.md`（下游 impl / review / gate_review / st 读取的**权威源**：tech_stack 与项目级 constraints / assumptions 均以此为准；task 对象不再单独承载约束/假设）
+4. 产出：`{{HARNESS_MEMORY_DIR}}/plans/project-context.md`（下游 impl / ut / review / gate_review / st 读取的**权威源**：tech_stack 与项目级 constraints / assumptions 均以此为准；task 对象不再单独承载约束/假设）

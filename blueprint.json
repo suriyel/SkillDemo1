@@ -3,7 +3,7 @@
   "id": "long-task-simple",
   "version": "1.0.0",
   "title": "long-task-simple",
-  "description": "long-task-lite 的极简变体：去 SRS / Design / wd 特性设计文档，唯一需求源 = 用户输入文档。bdd 节点直接据用户输入文档产出 BDD 可执行规约（bdd.json），BDD-xxx 场景 id 是全程唯一溯源货币（无 FR-id / srs.md / design.md）。decompose 把场景分组成 work-unit feature，init 生成带 bdd_ids 的 task。iter loop 体内 impl → review → gate_review 三节点：impl 直接据 bdd.json 场景实现代码 + 配套测试（测试断言 then/examples 的精确可观察值）；review 是 LLM 对抗审查者，按 task.bdd_ids 逐条核 BDD 覆盖与断言深度，落 .harness/memory/notes/feature-<id>-review-r<N>.md；gate_review 脚本机检硬门：真跑测试 + grep BDD id 覆盖 + 断言深度 + mock 可观察面。末段 st + gate_st 在真实集成环境逐条 replay 全部 BDD 场景并对账。",
+  "description": "long-task-lite 的极简变体：去 SRS / Design / wd 特性设计文档，唯一权威需求源 = 用户输入文档（original-requirements.md）。bdd 节点据用户输入文档产出 BDD 可执行规约（bdd.json）作为对抗验证 oracle；BDD-xxx 场景 id 是下游验证溯源货币（无 FR-id / srs.md / design.md）。decompose 按用户需求切 work-unit、每个 task 带需求文档锚点 req_refs（bdd_ids 随附但仅供验证）；init 生成带 req_refs + bdd_ids 的 task。iter loop 体内 impl → ut → review → gate_review 四节点：impl 以 original-requirements.md 为权威、按 req_refs 必读，只写实现、不写测试，不读 bdd.json；ut 据 bdd.json 独立写对抗测试（BDD-id 标记 + then/examples 精确可观察值）；review 是 LLM 对抗审查者，用 sub-agent 并行按 task.bdd_ids 分块核 impl 行为与 ut 测试是否忠实 BDD，汇总落 .harness/memory/notes/feature-<id>-review-r<N>.md；gate_review 脚本机检硬门：真跑测试 + grep BDD id 覆盖 + 断言深度 + then 精确值命中（测试由独立 ut 所写，机检合法），test 维折返 ut、impl 维折返 impl。末段 st + gate_st 在真实集成环境逐条 replay 全部 BDD 场景并对账。",
   "startNode": "scan",
   "nodes": [
     {
@@ -69,7 +69,7 @@
     {
       "id": "iter",
       "kind": "loop",
-      "title": "按 feature 迭代：impl → review → gate_review",
+      "title": "按 feature 迭代：impl → ut → review → gate_review",
       "x": 1640,
       "y": 100,
       "iterator": {
@@ -83,22 +83,29 @@
           {
             "id": "impl",
             "kind": "skill",
-            "title": "Direct Implementation",
+            "title": "据需求文档实现（不写测试）",
             "x": 100,
+            "y": 100
+          },
+          {
+            "id": "ut",
+            "kind": "skill",
+            "title": "据 BDD 写对抗测试",
+            "x": 210,
             "y": 100
           },
           {
             "id": "review",
             "kind": "skill",
-            "title": "对抗式 Review",
+            "title": "对抗式 Review（并行 + 汇总）",
             "x": 320,
             "y": 100,
             "onFail": {
               "candidates": [
                 {
                   "when": "status != \"ok\" && notes has \"FAILKIND: test\"",
-                  "rewindTo": "impl",
-                  "ticketTitle": "测试不忠实 spec — 修测试断言对齐 then 的 observable（错轴/错字段/race/错 setup），勿改业务实现",
+                  "rewindTo": "ut",
+                  "ticketTitle": "测试不忠实 spec — 回 ut 修测试断言对齐 then 的 observable（错轴/错字段/race/错 setup），勿改业务实现",
                   "maxAttempts": 10
                 },
                 {
@@ -120,14 +127,14 @@
               "candidates": [
                 {
                   "when": "status != \"ok\" && notes has \"FAILKIND: test\"",
-                  "rewindTo": "impl",
-                  "ticketTitle": "测试不忠实 spec — 修测试断言对齐 then 的 observable（错轴/错字段），勿改业务实现",
+                  "rewindTo": "ut",
+                  "ticketTitle": "测试编写缺口（漏 BDD id / 断言过浅 / then 精确值无命中）— 回 ut 补/修测试，勿改业务实现",
                   "maxAttempts": 10
                 },
                 {
                   "when": "status != \"ok\"",
                   "rewindTo": "impl",
-                  "ticketTitle": "Gate_review 机检未通过（漏 BDD id / 断言过浅 / mock 可观察面 / 测试不绿）— 回 impl 修代码",
+                  "ticketTitle": "Gate_review 机检未通过（测试不绿 / 边界契约违约）— 回 impl 修实现",
                   "maxAttempts": 10
                 }
               ]
@@ -137,6 +144,11 @@
         "edges": [
           {
             "from": "impl",
+            "to": "ut",
+            "when": "status == \"ok\""
+          },
+          {
+            "from": "ut",
             "to": "review",
             "when": "status == \"ok\""
           },
@@ -263,11 +275,19 @@
           ],
           "description": "业务风险等级，继承自所属 feature（bdd.json feature.risk）；critical 路径需 ≥1 happy + ≥N negative + 独立验证证据，下游 gate_bdd/gate_st 按此分层判定；详见 shared-reference/risk-tagging-guide.md"
         },
+        "req_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "权威需求锚点（impl 据此读 original-requirements.md 对应片段实现，必读）：每项形如 \"original-requirements.md L<起>-L<止> | <一句摘要>\" 或 scan 约定 file:line。本蓝图 impl 的唯一行为权威源；bdd_ids 仅供下游验证。"
+        },
         "bdd_ids": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "覆盖的 BDD 场景 id（仅供 ut/review/gate_review/st 验证用，非 impl 实现依据）。"
         },
         "verification_steps": {
           "type": "array"
@@ -291,6 +311,10 @@
         "category": "core",
         "risk": "critical",
         "description": "邮箱 + 密码字段、必填校验、submit 触发回调",
+        "req_refs": [
+          "original-requirements.md L12-L28 | 登录表单字段与校验规则",
+          "original-requirements.md L40-L46 | 登录成功后的回调与会话"
+        ],
         "bdd_ids": [
           "BDD-001",
           "BDD-007"

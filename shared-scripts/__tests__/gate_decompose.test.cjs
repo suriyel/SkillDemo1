@@ -26,17 +26,18 @@ function writeBdd(cwd, features) {
 }
 function bddIds(n) { return Array.from({ length: n }, (_, i) => 'BDD-' + (i + 1)); }
 
-// ---- A. 形状（无 srs_trace；bdd_ids 必填非空）----
+// ---- A. 形状（无 srs_trace；req_refs + bdd_ids 必填非空）----
+const RR = ['original-requirements.md L1-L9 | 范例需求']; // 合法 req_refs 锚点
 test('validateFeaturePlanShape: 合法 features 返回空', () => {
   const errs = G.validateFeaturePlanShape([
-    { title: 'A', bdd_ids: ['BDD-001'], priority: 'high', dependencies: [] },
+    { title: 'A', req_refs: RR, bdd_ids: ['BDD-001'], priority: 'high', dependencies: [] },
   ]);
   assert.deepEqual(errs, []);
 });
 test('validateFeaturePlanShape: 空数组 / 缺 title / 坏 bdd_id / 坏 priority 全部报错', () => {
   assert.match(G.validateFeaturePlanShape([])[0], /features 数组为空/);
   const errs = G.validateFeaturePlanShape([
-    { title: '', bdd_ids: ['BDD_001'], priority: 'urgent', dependencies: 'no' },
+    { title: '', req_refs: RR, bdd_ids: ['BDD_001'], priority: 'urgent', dependencies: 'no' },
   ]);
   assert.ok(errs.some((e) => /title 缺失/.test(e)));
   assert.ok(errs.some((e) => /bdd_ids\[0\] 应匹配/.test(e)));
@@ -44,12 +45,30 @@ test('validateFeaturePlanShape: 空数组 / 缺 title / 坏 bdd_id / 坏 priorit
   assert.ok(errs.some((e) => /dependencies 必须是数组/.test(e)));
 });
 test('validateFeaturePlanShape: bdd_ids 空数组报「每 feature ≥1 个 BDD 场景」', () => {
-  const errs = G.validateFeaturePlanShape([{ title: 'A', bdd_ids: [] }]);
+  const errs = G.validateFeaturePlanShape([{ title: 'A', req_refs: RR, bdd_ids: [] }]);
   assert.ok(errs.some((e) => /bdd_ids 必须是非空数组/.test(e)));
 });
 test('validateFeaturePlanShape: 无 srs_trace 字段不报错（本蓝图无 FR-id）', () => {
-  const errs = G.validateFeaturePlanShape([{ title: 'A', bdd_ids: ['BDD-001'] }]);
+  const errs = G.validateFeaturePlanShape([{ title: 'A', req_refs: RR, bdd_ids: ['BDD-001'] }]);
   assert.deepEqual(errs, []);
+});
+
+// ---- A2. req_refs（impl 权威指针）必填非空 + 锚点格式 ----
+test('validateFeaturePlanShape: 缺 req_refs / 空 req_refs → 报错', () => {
+  assert.ok(G.validateFeaturePlanShape([{ title: 'A', bdd_ids: ['BDD-001'] }])
+    .some((e) => /req_refs 必须是非空数组/.test(e)));
+  assert.ok(G.validateFeaturePlanShape([{ title: 'A', req_refs: [], bdd_ids: ['BDD-001'] }])
+    .some((e) => /req_refs 必须是非空数组/.test(e)));
+});
+test('validateFeaturePlanShape: req_refs 项缺需求锚点 → 报错', () => {
+  const errs = G.validateFeaturePlanShape([{ title: 'A', req_refs: ['一段没有任何锚点的描述'], bdd_ids: ['BDD-001'] }]);
+  assert.ok(errs.some((e) => /req_refs\[0\] 缺需求锚点/.test(e)));
+});
+test('validateFeaturePlanShape: req_refs 合法锚点（行号 / file:line）→ 不报 req_refs 错', () => {
+  assert.deepEqual(
+    G.validateFeaturePlanShape([{ title: 'A', req_refs: ['original-requirements.md L12-L28 | 登录'], bdd_ids: ['BDD-001'] }]), []);
+  assert.deepEqual(
+    G.validateFeaturePlanShape([{ title: 'A', req_refs: ['src/auth.js:42 | 复用既有鉴权'], bdd_ids: ['BDD-001'] }]), []);
 });
 
 // ---- B. BDD 覆盖（唯一覆盖货币）----

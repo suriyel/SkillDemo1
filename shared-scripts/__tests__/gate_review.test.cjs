@@ -12,6 +12,7 @@ const path = require('path');
 const {
   isEnvFailure, hasBoundaryContractSignal, assertionDepth,
   extractExpectedTokens, scanWorkspaceLocations, pickCurrentTask,
+  classifyFailKind,
 } = require('../gate_review.cjs');
 
 // ---- isEnvFailure ----
@@ -71,6 +72,37 @@ test('scanWorkspaceLocations: 扫到源码/测试里的 BDD 标记', () => {
   const locs = scanWorkspaceLocations(cwd);
   assert.ok(locs.has('BDD-001'));
   assert.equal(locs.get('BDD-001')[0].file.replace(/\\/g, '/'), 'tests/a.test.js');
+});
+
+// ---- classifyFailKind（test 维→ut / impl 维→impl / impl 优先 / env→blocked）----
+test('classifyFailKind: 仅测试编写缺口（漏标记/浅断言/then无命中）→ FAILKIND: test（折返 ut）', () => {
+  const r = classifyFailKind({ hasTestAuthoringGap: true, hasImplBehaviorGap: false, hasTestEnvFail: false });
+  assert.match(r.cls, /FAILKIND: test/);
+  assert.equal(r.envFixable, false);
+});
+test('classifyFailKind: 实现行为缺口（测试不绿/边界违约）→ FAILKIND: impl（折返 impl）', () => {
+  const r = classifyFailKind({ hasTestAuthoringGap: false, hasImplBehaviorGap: true, hasTestEnvFail: false });
+  assert.match(r.cls, /FAILKIND: impl/);
+  assert.equal(r.envFixable, false);
+});
+test('classifyFailKind: test 维与 impl 维并存 → impl 优先', () => {
+  const r = classifyFailKind({ hasTestAuthoringGap: true, hasImplBehaviorGap: true, hasTestEnvFail: false });
+  assert.match(r.cls, /FAILKIND: impl/);
+});
+test('classifyFailKind: 纯环境签名 → FAILKIND: env + envFixable=true（blocked）', () => {
+  const r = classifyFailKind({ hasTestAuthoringGap: false, hasImplBehaviorGap: false, hasTestEnvFail: true });
+  assert.match(r.cls, /FAILKIND: env/);
+  assert.equal(r.envFixable, true);
+});
+test('classifyFailKind: env 与内容缺口并存 → 内容缺口优先、不判 env（envFixable=false）', () => {
+  const r = classifyFailKind({ hasTestAuthoringGap: true, hasImplBehaviorGap: false, hasTestEnvFail: true });
+  assert.match(r.cls, /FAILKIND: test/);
+  assert.equal(r.envFixable, false);
+});
+test('classifyFailKind: 无任何缺口 → 空前缀', () => {
+  const r = classifyFailKind({ hasTestAuthoringGap: false, hasImplBehaviorGap: false, hasTestEnvFail: false });
+  assert.equal(r.cls, '');
+  assert.equal(r.envFixable, false);
 });
 
 // ---- assertionDepth（真断言 vs 重言式/占位）----

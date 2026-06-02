@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // gate_decompose.cjs —— Decompose 硬门
 //
-// 校验 decompose 节点产出的 `.harness/memory/plans/feature-plan.json`（BDD→feature 分组方案，
+// 校验 decompose 节点产出的 `.harness/memory/plans/feature-plan.json`（按需求切的 work-unit 分组方案，
 // loop 此时尚未灌入，故数据来源是磁盘文件而非 state.loops）。本门是「颗粒度」的权威裁决：
-//   - 形状（title / bdd_ids / priority / dependencies；本蓝图无 srs_trace / FR-id）
-//   - BDD 全覆盖（bdd.json 每个场景被某 feature.bdd_ids 认领、无 ghost id）—— 本蓝图唯一覆盖货币
+//   - 形状（title / req_refs / bdd_ids / priority / dependencies；本蓝图无 srs_trace / FR-id）
+//   - req_refs（每 work-unit 的需求锚点；impl 据此读 original-requirements.md 实现）必填非空 + 锚点格式
+//   - BDD 全覆盖（bdd.json 每个场景被某 feature.bdd_ids 认领、无 ghost id）—— 映射后的验证覆盖货币
 //   - 上下文预算（按 perScenarioTokens 投影；溢出 → **仅告警、不强制拆**）
 //   - 过度碎片化（太多薄 feature / 中位填充率过低 → 硬 fail，必按 S5 同源兄弟聚合）
 //
@@ -28,6 +29,9 @@ const budget = require('./_context-budget.cjs'); // 上下文预算工具（按�
 // ---- 常量 -------------------------------------------------------------------
 const BDD_ID_PATTERN = /^BDD-\d+$/;
 const VALID_PRIORITIES = new Set(['high', 'medium', 'low']);
+// req_refs 需求锚点：原文行号（original-requirements.md L…）或存量约定 file:line。
+// 与 gate_bdd 的 DERIV_ANCHOR 同源（不引 FR/SRS）。impl 据 req_refs 读 original-requirements.md 实现。
+const REQ_REF_ANCHOR = /(original-requirements\.md|\bL\d+\b|[\w./\\-]+:\d+)/;
 
 // ---- 工具 -------------------------------------------------------------------
 function emit(pass, message) {
@@ -86,7 +90,21 @@ function validateFeaturePlanShape(features) {
     const pfx = 'features[' + i + ']';
     if (f === null || typeof f !== 'object' || Array.isArray(f)) { errors.push(pfx + ': 必须是对象'); continue; }
     if (typeof f.title !== 'string' || !f.title.trim()) errors.push(pfx + ': title 缺失或为空');
-    // 本蓝图无 SRS / FR-id：work-unit feature 靠 bdd_ids 锚定覆盖的场景（无 srs_trace），故 bdd_ids 必填非空。
+    // req_refs：切分主轴 = 用户需求；每 work-unit 必带需求锚点（impl 据此读 original-requirements.md 实现）。
+    // 必填非空数组；每项须含需求锚点（original-requirements.md L… / file:line）。
+    if (!Array.isArray(f.req_refs) || f.req_refs.length === 0) {
+      errors.push(pfx + ' (title=' + (f.title || '?') + '): req_refs 必须是非空数组（每 work-unit ≥1 个需求锚点；impl 据 req_refs 读 original-requirements.md，无则 impl 无权威源）');
+    } else {
+      for (let ri = 0; ri < f.req_refs.length; ri++) {
+        const r = f.req_refs[ri];
+        if (typeof r !== 'string' || !r.trim()) {
+          errors.push(pfx + ': req_refs[' + ri + '] 必须是非空字符串');
+        } else if (!REQ_REF_ANCHOR.test(r)) {
+          errors.push(pfx + ': req_refs[' + ri + '] 缺需求锚点（应含 "original-requirements.md L<起>-L<止>" 或 "<file>:line"），当前 "' + r.slice(0, 40) + '"');
+        }
+      }
+    }
+    // 本蓝图无 SRS / FR-id：work-unit feature 靠 bdd_ids 锚定覆盖的场景（无 srs_trace），故 bdd_ids 必填非空（仅供下游验证）。
     if (!Array.isArray(f.bdd_ids) || f.bdd_ids.length === 0) {
       errors.push(pfx + ' (title=' + (f.title || '?') + '): bdd_ids 必须是非空数组（每 feature ≥1 个 BDD 场景）');
     } else {

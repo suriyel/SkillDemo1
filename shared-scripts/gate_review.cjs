@@ -6,11 +6,15 @@
 // + then 精确值命中 + 边界契约违约信号。review 漏判的客观缺口由本门抓回。
 //
 // 失败分类（按 FAILKIND 在 message 前缀标记，供 blueprint.json onFail.candidates 路由）：
-//   [CONTENT-GAP][FAILKIND: impl]   —— 漏 BDD id / 断言过浅 / then 精确值无命中 / 测试不绿非 env / 边界契约违约
+//   [CONTENT-GAP][FAILKIND: test]   —— 测试编写缺口：漏 BDD id 标记 / 断言过浅 / then 精确值无命中
+//                                     （本蓝图测试由独立的 ut 节点据 bdd.json 编写，非代码作者自证 → 折返 ut 修测试）
+//   [CONTENT-GAP][FAILKIND: impl]   —— 实现行为缺口：测试不绿非 env / 边界契约违约（NPE/5xx）→ 折返 impl 修实现
 //   [ENV-FIXABLE][FAILKIND: env]    —— 仅环境签名（缺依赖/工具/服务/shell 解析），无任何内容缺口
+//   并存时 impl 优先（实现行为是更根本的缺口；修 impl 后 test 缺口下轮再现）。
 //
 // 本蓝图无 SRS / Design / wd：不检状态机闭环（design §9.2）、不检 NFR 实现痕迹（design §9.1）、
-// 无 feature-tests.json B 维。行为契约 = bdd.json 场景 then/examples；mock 可观察面为 advisory（由 review LLM 判）。
+// 无 feature-tests.json B 维。行为契约 = bdd.json 场景 then/examples；测试由独立 ut 写就，故 grep
+// BDD 标记 / then 精确值的机检合法（非 impl 自证）；mock 可观察面为 advisory（由 review LLM 判）。
 //
 // stdout: 多行「证据报告」+ 最后一行 JSON {pass, message, blocked}
 // exit:   0 always（gate_review SKILL.md 的 LLM 读 stdout 决定 OK/FAIL/BLOCKED）
@@ -115,6 +119,18 @@ function emit(pass, message, blocked) {
 }
 function isNonEmptyString(v) { return typeof v === 'string' && v.trim().length > 0; }
 function clip(s, n) { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) + ' …[truncated]' : s; }
+
+// 失败分类（纯函数，便于单测）：
+//   测试编写缺口（漏 BDD 标记 / 断言过浅 / then 精确值无命中）→ FAILKIND: test → 折返 ut（测试由独立 ut 写）
+//   实现行为缺口（测试不绿非 env / 边界契约违约）→ FAILKIND: impl → 折返 impl
+//   并存 → impl 优先（实现行为是更根本的缺口）；纯环境签名 → FAILKIND: env（blocked，转 ADVANCE_BLOCKED）
+// 返回 { cls:<message 前缀>, envFixable:<是否纯 env→blocked> }。
+function classifyFailKind({ hasTestAuthoringGap, hasImplBehaviorGap, hasTestEnvFail }) {
+  if (hasImplBehaviorGap) return { cls: '[CONTENT-GAP][FAILKIND: impl] ', envFixable: false };
+  if (hasTestAuthoringGap) return { cls: '[CONTENT-GAP][FAILKIND: test] ', envFixable: false };
+  if (hasTestEnvFail) return { cls: '[ENV-FIXABLE][FAILKIND: env] ', envFixable: true };
+  return { cls: '', envFixable: false };
+}
 
 function pickCurrentTask(state) {
   const loops = (state && state.loops) || {};
@@ -426,14 +442,16 @@ if (require.main === module) (async () => {
 
     // 测试环境失败：测试根本没跑起来 / 非零退出且命中 ENV 签名
     const testEnvFail = (!t.ran) || (t.ran && !t.ok && isEnvFailure(t.tail));
-    // 内容缺口（一律归 impl）。本蓝图无 design：不含状态机/NFR；mock 为 advisory 不计入。
-    const contentImpl = !!(flagsMissing.length || flagsShallow.length || flagsNoExact.length
-      || (t.ran && !t.ok && !isEnvFailure(t.tail))
-      || boundaryFlag);
+    // 测试编写缺口（漏 BDD 标记 / 断言过浅 / then 精确值无命中）→ FAILKIND: test → 折返 ut（测试由独立 ut 编写）。
+    const contentTest = !!(flagsMissing.length || flagsShallow.length || flagsNoExact.length);
+    // 实现行为缺口（测试不绿非 env / 边界契约违约）→ FAILKIND: impl → 折返 impl。
+    // 本蓝图无 design：不含状态机/NFR；mock 为 advisory 不计入。
+    const contentImpl = !!((t.ran && !t.ok && !isEnvFailure(t.tail)) || boundaryFlag);
 
-    let cls = '';
-    if (contentImpl) cls = '[CONTENT-GAP][FAILKIND: impl] ';
-    else if (testEnvFail) cls = '[ENV-FIXABLE][FAILKIND: env] ';
+    // 路由分流（纯函数 classifyFailKind）：impl 优先（实现行为是更根本的缺口；修 impl 后 test 缺口下轮再现）。
+    const { cls, envFixable } = classifyFailKind({
+      hasTestAuthoringGap: contentTest, hasImplBehaviorGap: contentImpl, hasTestEnvFail: testEnvFail,
+    });
 
     out.push('[机检初判] ' + (advisoryPass ? 'pass（无机检红旗；review 已主观放过 + gate_review 客观放行 → 出 loop）'
       : cls + 'fail：' + problems.slice(0, MAX_REPORT).join('；')));
@@ -443,7 +461,7 @@ if (require.main === module) (async () => {
     if (advisoryPass) {
       emit(true, `task#${tid} 的 ${relevant.length} 个相关 BDD 场景：静态层（覆盖+断言深度）+ 动态层（测试+期望值）+ 边界契约 全部通过。${unknownNote}`);
     } else {
-      const envFixable = !contentImpl && testEnvFail;
+      // envFixable=true（无任何内容缺口、仅环境签名）→ blocked（gate_review SKILL 转 ADVANCE_BLOCKED）。
       emit(false, cls + 'gate_review 机检未通过：' + problems.join('；') + unknownNote, envFixable);
     }
   } catch (e) {
@@ -454,4 +472,5 @@ if (require.main === module) (async () => {
 module.exports = {
   isEnvFailure, hasBoundaryContractSignal, assertionDepth,
   extractExpectedTokens, scanWorkspaceLocations, pickCurrentTask,
+  classifyFailKind,
 };
