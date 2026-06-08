@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 3,
+  "id": "my-test",
+  "version": "1.0.0",
+  "title": "测试",
+  "description": "",
+  "startNode": "requirements",
+  "nodes": [
+    {
+      "id": "requirements",
+      "title": "requirements",
+      "x": 52,
+      "y": 131.265625,
+      "skill": {
+        "sourceTemplate": "requirements",
+        "sourceVersion": null,
+        "lastSyncedAt": "2026-05-10T15:09:13.181Z"
+      }
+    },
+    {
+      "id": "long_task_ucd",
+      "title": "long-task-ucd",
+      "x": 82,
+      "y": 237.265625,
+      "skill": {
+        "sourceTemplate": "long-task/long-task-ucd",
+        "sourceVersion": null,
+        "lastSyncedAt": "2026-05-10T15:09:24.216Z"
+      }
+    },
+    {
+      "id": "design",
+      "title": "design",
+      "x": 130,
+      "y": 352.265625,
+      "skill": {
+        "sourceTemplate": "design",
+        "sourceVersion": null,
+        "lastSyncedAt": "2026-05-10T15:09:39.794Z"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "requirements",
+      "to": "long_task_ucd"
+    },
+    {
+      "from": "long_task_ucd",
+      "to": "design"
+    }
+  ]
+}

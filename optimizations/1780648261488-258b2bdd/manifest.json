@@ -1,0 +1,38 @@
+{
+  "id": "1780648261488-258b2bdd",
+  "createdAt": "2026-06-05T08:32:18.071Z",
+  "changes": [
+    {
+      "kind": "skill",
+      "name": "requirements",
+      "relPath": "skills/requirements/SKILL.md",
+      "rationale": "补充 bp-advance 显式上报、bp-context 保存产物路径供下游引用、增加错误处理（目录创建/文件写入失败需上报 failed）、节点 title 改为更具体的『需求提取』。",
+      "beforeSha": "9c2c02ca183d9b178f93d01632096164d6da7043e4a436e99e825d297b6069e6",
+      "afterFile": "c0"
+    },
+    {
+      "kind": "skill",
+      "name": "long_task_ucd",
+      "relPath": "skills/long_task_ucd/SKILL.md",
+      "rationale": "Step 9「必需子 skill：调用 long-task-design」属于显式跨 skill 路由指令，违反「DAG 已负责流转」原则；Step 8 末句「调用 long-task-design 开始设计」同理。删除这两句，其余内容（handoff 摘要、文件路径引用）均保留。保留 TodoWrite checklist（Harness 内置工具，非跨 skill 路由）。其余内容已符合最佳实践。",
+      "beforeSha": "61343c4c3f8ce92667d422c0ec16b87bc22837044d1a1fc6c0e6fde25c5ade43",
+      "afterFile": "c1"
+    },
+    {
+      "kind": "skill",
+      "name": "design",
+      "relPath": "skills/design/SKILL.md",
+      "rationale": "明确化 bp-advance 命令（原『按 banner 指令上报』模糊）；添加 requirements.md 存在性前置检查及 blocked 上报；将输入路径改为占位符变量以支持跨项目复用。",
+      "beforeSha": "a86142e2fc0a377f5b24ad0141caa8777600e13f9fffe8aaf81a689eaab2949b",
+      "afterFile": "c2"
+    }
+  ],
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "artifactCount": 3,
+  "analyzed": 3,
+  "changedCount": 3,
+  "unchanged": 0,
+  "skipped": [],
+  "durationMs": 76579
+}

@@ -1,0 +1,400 @@
+{
+  "id": "1780724585880-6322d470",
+  "createdAt": "2026-06-06T05:46:41.534Z",
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "durationMs": 215654,
+  "artifactCount": 3,
+  "batches": 1,
+  "failedBatches": 0,
+  "mergeFailed": false,
+  "card": {
+    "schema": "bp-eval/3",
+    "overallScore": 52,
+    "computedOverall": 52,
+    "llmOverall": 55,
+    "grade": "D",
+    "dimensions": [
+      {
+        "id": "topology",
+        "name": "拓扑与流程完整性",
+        "weight": 18,
+        "score": 85,
+        "findings": [
+          "startNode \"requirements\" 存在且可达",
+          "3个节点均从 startNode 可达，无孤立节点",
+          "两条边 (requirements→long_task_ucd, long_task_ucd→design) 的 from/to 均在 nodes 中存在",
+          "线性链式 DAG，无分支汇合，结构简洁",
+          "design 节点无出边，为intended terminal，无死胡同",
+          "此简单流程无需 loop 节点，不算缺陷"
+        ],
+        "suggestions": [
+          "若未来扩展为多角色并行场景，建议增加分支与合并节点"
+        ]
+      },
+      {
+        "id": "gating",
+        "name": "门禁与失败恢复",
+        "weight": 18,
+        "score": 30,
+        "findings": [
+          "整个工作流中没有任何 review-skill 类型的门禁节点",
+          "long_task_ucd SKILL.md 中包含 <HARD-GATE> 段落，但该节点类型为 skill 而非 gate——它不运行校验脚本、不上报 ok/failed/blocked",
+          "nodes 中不存在任何 onFail 规则",
+          "无 maxAttempts 边界限制"
+        ],
+        "suggestions": [
+          "建议在关键质量检查点（如 requirements 后）插入 review-skill 门禁节点，运行格式校验脚本并上报三态",
+          "为每个 skill 节点添加 onFail 规则指定同层 rewindTo 和 maxAttempts"
+        ]
+      },
+      {
+        "id": "skillQuality",
+        "name": "Skill 蓝图契合度",
+        "weight": 16,
+        "score": 70,
+        "findings": [
+          "requirements SKILL.md：与 node role 匹配——读取用户消息、写入 requirements.md、使用 {{HARNESS_MEMORY_DIR}} 参数化、bp-context 通知下游、bp-advance 结束",
+          "long_task_ucd SKILL.md：内容详尽但核心问题——node type 是 skill 不是 gate，HARD-GATE 只是 prose 段落不是框架门禁；Step 3（样式 Token）被截断，text-to-image prompt 生成方法未展开",
+          "design SKILL.md：与 node role 匹配——检查前置条件、读 requirements、写入 design.md、使用 {{REQUIREMENTS_PATH}} 带默认值、blocked/ok 上报正确"
+        ],
+        "suggestions": [
+          "long_task_ucd 若要作为质量门禁，应改为 review-skill 节点并接入校验脚本",
+          "补充 long_task_ucd Step 3 完整内容"
+        ]
+      },
+      {
+        "id": "generalization",
+        "name": "通用化(跨语言/项目)",
+        "weight": 16,
+        "score": 62,
+        "findings": [
+          "requirements: {{HARNESS_MEMORY_DIR}}/plans/requirements.md 参数化，可跨项目复用",
+          "long_task_ucd: 硬编码 docs/plans/*-srs.md (通配符可接受但路径结构固定)、long-task:long-task-design (项目特定task ID)、docs/plans/YYYY-MM-DD-<topic>-ucd.md 日期+topic格式",
+          "design: plans 子目录硬编码，不可配置"
+        ],
+        "suggestions": [
+          "将 docs/plans/ 改为可配置参数 {{DOCS_DIR}}/plans/",
+          "将 long-task:long-task-design 改为框架无关的阶段描述而非特定task ID"
+        ]
+      },
+      {
+        "id": "loopTasks",
+        "name": "循环与任务结构",
+        "weight": 12,
+        "score": 0,
+        "findings": [
+          "此工作流无 loop 节点，不适用此维度"
+        ],
+        "suggestions": []
+      },
+      {
+        "id": "clarity",
+        "name": "文档与可维护性",
+        "weight": 10,
+        "score": 55,
+        "findings": [
+          "blueprint.json: title=\"测试\" 无意义，description 为空",
+          "node titles (requirements, long-task-ucd, design) 描述性充分",
+          "requirements SKILL.md: 标题清晰、步骤编号清楚",
+          "long_task_ucd SKILL.md: 标题描述清晰，HARD-GATE 醒目标注，Checklist 结构好",
+          "design SKILL.md: 标题清晰，变量语法一致",
+          "long_task_ucd Step 9（衔接到设计）极模糊，无 shared reference 支持"
+        ],
+        "suggestions": [
+          "blueprint.json 的 title/description 应填写有意义的项目名称和描述",
+          "增加 shared reference 文档支持多人协作编写"
+        ]
+      },
+      {
+        "id": "robustness",
+        "name": "健壮性与边界",
+        "weight": 10,
+        "score": 50,
+        "findings": [
+          "requirements: 仅处理 mkdir 失败和文件写入失败；未处理空用户消息、无效输入、requirements_doc key 已存在的场景",
+          "long_task_ucd: SRS 文件不存在、SRS 未审批、用户拒绝所有风格选项、I/O 错误、git commit 失败、规模巨大等场景均无处理",
+          "design: requirements.md 为空文件或格式异常时仍会生成设计文档；写入 design.md 失败无显式处理"
+        ],
+        "suggestions": [
+          "增加对空输入/无效输入的显式检查和 bp-advance blocked/failed 处理",
+          "增加 I/O 错误的大声失败机制"
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "kind": "skill",
+        "name": "requirements",
+        "role": "requirements",
+        "score": 67,
+        "findings": [],
+        "suggestions": [],
+        "dimensions": [
+          {
+            "id": "clarity",
+            "name": "清晰度与可读性",
+            "weight": 18,
+            "score": 72,
+            "findings": [
+              "标题简洁，步骤编号清晰，三个子项结构清晰",
+              "整篇文字偏少但扫描友好"
+            ],
+            "suggestions": [
+              "增加对'可省'情形的明确边界说明"
+            ]
+          },
+          {
+            "id": "actionability",
+            "name": "可执行性与操作具体度",
+            "weight": 18,
+            "score": 65,
+            "findings": [
+              "mkdir、bp-advance ok 步骤操作明确",
+              "bp-context save 的 key 硬编码未说明下游引用方式",
+              "'识别核心需求'是抽象动作，HOW 未述；'3-5条'数量模糊"
+            ],
+            "suggestions": [
+              "增加识别方法指引，消除核心功能条数不确定性"
+            ]
+          },
+          {
+            "id": "completeness",
+            "name": "完备性与自足性",
+            "weight": 18,
+            "score": 55,
+            "findings": [
+              "输入来源仅一笔带过，无显式获取说明",
+              "无完成标准（文件存在即可还是内容必须满足约束？）",
+              "无效输入（空消息/闲聊）无处理路径"
+            ],
+            "suggestions": [
+              "显式说明输入来源，增加完成标准和无效输入处理"
+            ]
+          },
+          {
+            "id": "soundness",
+            "name": "技术合理性与无误导",
+            "weight": 16,
+            "score": 78,
+            "findings": [
+              "mkdir -p 标准做法，bp-context save 传文件路径而非内容是合理引用方式",
+              "非功能要求单独列出是良好实践"
+            ],
+            "suggestions": [
+              "步骤2可给出手写内容模板减少LLM自由发挥"
+            ]
+          },
+          {
+            "id": "robustness",
+            "name": "健壮性与边界覆盖",
+            "weight": 16,
+            "score": 52,
+            "findings": [
+              "仅覆盖目录创建和文件写入失败两个节点",
+              "未覆盖：空输入、目录已存在无写权限、磁盘满、文件已存在（覆盖/追加？）"
+            ],
+            "suggestions": [
+              "增加更多边界场景和错误消息区分"
+            ]
+          },
+          {
+            "id": "generalization",
+            "name": "通用化与可复用性",
+            "weight": 14,
+            "score": 80,
+            "findings": [
+              "{{HARNESS_MEMORY_DIR}}参数化，三个子项结构通用，无语言/框架假设"
+            ],
+            "suggestions": [
+              "可进一步参数化核心功能条数上限"
+            ]
+          }
+        ],
+        "llmScore": null
+      },
+      {
+        "kind": "skill",
+        "name": "long_task_ucd",
+        "role": "long-task-ucd",
+        "score": 57,
+        "findings": [],
+        "suggestions": [],
+        "dimensions": [
+          {
+            "id": "clarity",
+            "name": "清晰度与可读性",
+            "weight": 18,
+            "score": 68,
+            "findings": [
+              "HARD-GATE醒目标注，Checklist结构好，UI输入分类清晰",
+              "Step3内容截断，text-to-image prompt未解释，Step9极模糊"
+            ],
+            "suggestions": [
+              "补充Step3完整内容，明确过渡摘要格式"
+            ]
+          },
+          {
+            "id": "actionability",
+            "name": "可执行性与操作具体度",
+            "weight": 18,
+            "score": 55,
+            "findings": [
+              "Step1/2有具体指引，输出格式有模板",
+              "text-to-image prompt生成方法、样式token定义方式、审批流程均未展开"
+            ],
+            "suggestions": [
+              "增加text-to-image prompt方法论和样式token模板"
+            ]
+          },
+          {
+            "id": "completeness",
+            "name": "完备性与自足性",
+            "weight": 18,
+            "score": 50,
+            "findings": [
+              "覆盖SRS→UCD→设计阶段，有用户反馈循环",
+              "Step3完全截断，样式token定义缺失，完成标准不明确"
+            ],
+            "suggestions": [
+              "补充Step3，增加通过标准的精确定义"
+            ]
+          },
+          {
+            "id": "soundness",
+            "name": "技术合理性与无误导",
+            "weight": 16,
+            "score": 65,
+            "findings": [
+              "阶段划分合理，HARD-GATE安全，WCAG/响应式断点体现NFR关注",
+              "text-to-image prompt作为主要交付物价值存疑，未考虑已有设计系统情况"
+            ],
+            "suggestions": [
+              "评估text-to-image prompt的实际用途，考虑已有设计系统的扩展场景"
+            ]
+          },
+          {
+            "id": "robustness",
+            "name": "健壮性与边界覆盖",
+            "weight": 16,
+            "score": 48,
+            "findings": [
+              "有HARD-GATE和'SRS无UI特性'分支",
+              "SRS不存在/未审批/内部矛盾、用户拒绝风格选项、I/O错误、git commit失败、规模巨大均无处理"
+            ],
+            "suggestions": [
+              "增加SRS文件不存在时的明确中止路径，增加I/O错误大声失败"
+            ]
+          },
+          {
+            "id": "generalization",
+            "name": "通用化与可复用性",
+            "weight": 14,
+            "score": 58,
+            "findings": [
+              "通配符SRS路径、色板/间距 token通用，不绑定前端框架",
+              "docs/plans/路径、long-task:long-task-design task ID、AskUserQuestion形式项目特定"
+            ],
+            "suggestions": []
+          }
+        ],
+        "llmScore": null
+      },
+      {
+        "kind": "skill",
+        "name": "design",
+        "role": "design",
+        "score": 70,
+        "findings": [],
+        "suggestions": [],
+        "dimensions": [
+          {
+            "id": "clarity",
+            "name": "清晰度与可读性",
+            "weight": 18,
+            "score": 72,
+            "findings": [
+              "标题清晰，变量语法一致，步骤结构简洁",
+              "步骤1逻辑连贯性略有歧义（检查和执笔分属两句）"
+            ],
+            "suggestions": [
+              "步骤1改为内聚的条件分支写法"
+            ]
+          },
+          {
+            "id": "actionability",
+            "name": "可执行性与操作具体度",
+            "weight": 18,
+            "score": 73,
+            "findings": [
+              "检查→读→写→上报流程完整，各步骤操作明确",
+              "未说明写操作是覆盖还是追加，也未说明plans/目录创建责任"
+            ],
+            "suggestions": [
+              "明确覆盖式写入和目录创建规则"
+            ]
+          },
+          {
+            "id": "completeness",
+            "name": "完备性与自足性",
+            "weight": 18,
+            "score": 68,
+            "findings": [
+              "输入/步骤/输出/完成标准均有定义，有量化指标",
+              "未定义requirements.md内容格式/质量标准；未定义关键模块粒度"
+            ],
+            "suggestions": [
+              "增加对requirements.md的内容验证，补充关键模块粒度指引"
+            ]
+          },
+          {
+            "id": "soundness",
+            "name": "技术合理性与无误导",
+            "weight": 16,
+            "score": 82,
+            "findings": [
+              "逻辑流正确，三态上报正确，步骤顺序无矛盾",
+              "未显式处理requirements.md读取失败（如权限问题）"
+            ],
+            "suggestions": [
+              "增加读取失败的显式处理"
+            ]
+          },
+          {
+            "id": "robustness",
+            "name": "健壮性与边界覆盖",
+            "weight": 16,
+            "score": 58,
+            "findings": [
+              "步骤1覆盖文件不存在场景并正确blocked退出",
+              "未覆盖：空文件、二进制/乱码、写入失败、无自我验证机制"
+            ],
+            "suggestions": [
+              "增加空文件检查、写入失败处理、输出自检验证"
+            ]
+          },
+          {
+            "id": "generalization",
+            "name": "通用化与可复用性",
+            "weight": 14,
+            "score": 65,
+            "findings": [
+              "{{HARNESS_MEMORY_DIR}}参数化，内容约束通用，无语言假设",
+              "plans/子目录硬编码不可配置，若另一项目输出到docs/design/需改源码"
+            ],
+            "suggestions": []
+          }
+        ],
+        "llmScore": null
+      }
+    ],
+    "artifactMean": 65,
+    "summary": "三个 Skill 的内在质量整体中等偏弱：requirements 和 design 骨架完整但边界覆盖不足，long_task_ucd 内容最详尽却存在 Step 3 截断和 text-to-image prompt 价值存疑的根本缺陷。工作流结构层面，最关键的问题是整个工作流没有任何框架意义上的门禁节点（long_task_ucd 的 HARD-GATE 只是 prose 段落），且完全缺失失败恢复机制（无 onFail、无 maxAttempts），这是一个质量漏洞——无法在关键节点强制质量检查，任何节点失败都将导致工作流中断。",
+    "topIssues": [
+      "long_task_ucd 节点不是门禁节点——SKILL.md 中的 HARD-GATE 段落只是 prose 警告，不是框架意义上的 gate 节点（无脚本、无 ok/failed/blocked 三态上报）",
+      "整个工作流无失败恢复机制：任何节点失败都会导致工作流中断，没有 onFail 规则和 maxAttempts 限制",
+      "long_task_ucd 的 Step 3（生成样式 Token）内容被截断，核心交付物缺失；text-to-image prompt 作为主要交付物其价值存疑且生成方法未展开",
+      "blueprint.json 的 title 为\"测试\"且 description 为空，元数据缺乏可维护性"
+    ]
+  }
+}

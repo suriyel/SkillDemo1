@@ -1,0 +1,492 @@
+{
+  "id": "1780726305622-dc458b36",
+  "createdAt": "2026-06-06T06:14:13.638Z",
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "durationMs": 148016,
+  "artifactCount": 3,
+  "batches": 1,
+  "failedBatches": 0,
+  "mergeFailed": false,
+  "card": {
+    "schema": "bp-eval/3",
+    "overallScore": 41,
+    "computedOverall": 41,
+    "llmOverall": 48,
+    "grade": "F",
+    "dimensions": [
+      {
+        "id": "topology",
+        "name": "拓扑与流程完整性",
+        "weight": 18,
+        "score": 72,
+        "findings": [
+          "线性 DAG：requirements → long_task_ucd → design，共 3 个节点、2 条边，拓扑合法",
+          "startNode \"requirements\" 存在且可达，无孤立/不可达节点",
+          "每条边的 from/to 均指向有效节点 id",
+          "无分支、无循环，终端为 design 的 bp-advance ok",
+          "主要缺陷：缺少任何循环节点和任务分发机制，无法处理批量工作"
+        ],
+        "suggestions": [
+          "若存在多文件并行处理需求，应增加 loop 节点和 tasks-schema",
+          "设计节点可考虑添加失败分支（edge with onFail）"
+        ]
+      },
+      {
+        "id": "gating",
+        "name": "门禁与失败恢复",
+        "weight": 18,
+        "score": 15,
+        "findings": [
+          "关键缺陷：blueprint.json 中没有任何节点定义 onFail 规则",
+          "long_task_ucd 节点在 SKILL.md 正文中写了 <HARD-GATE> 文本约束，但这不是真正的框架门禁节点——它不是 review-skill 类型，没有绑定校验脚本，不报告 ok/failed/blocked 三态",
+          "所有 3 个节点均无 maxAttempts 限制",
+          "无任何硬性质量门禁节点",
+          "一旦任何节点执行失败，工作流会直接中止而无重试/回退机制"
+        ],
+        "suggestions": [
+          "必须为每个 skill 节点添加 onFail 块，定义同层 rewindTo（如 long_task_ucd 失败则回到 requirements）",
+          "long_task_ucd 若需真门禁，应改为 review-skill 类型节点并绑定校验脚本",
+          "建议为关键节点设置 maxAttempts: 3 防止无限重试"
+        ]
+      },
+      {
+        "id": "skillQuality",
+        "name": "Skill 蓝图契合度",
+        "weight": 16,
+        "score": 58,
+        "findings": [
+          "requirements skill：与节点角色匹配，正确使用 {{HARNESS_MEMORY_DIR}} 占位符，流程清晰（mkdir→write→context→advance）",
+          "long_task_ucd skill：内容详尽但被截断（3385 字节），仅含 Step 1-4，缺少 Step 5-9 完整内容；HARD-GATE 文本不能替代真正的框架门禁节点",
+          "design skill：过于简略，仅 4 步，无实质性设计指导（架构/模块/数据流的具体提取方法缺失）",
+          "requirements 和 design 的 skill 均未定义下游所需的关键产物路径供 bp-context 正确传递",
+          "long_task_ucd 的 SKILL.md 内含 <HARD-GATE> 标记暗示作者意图是门禁，但节点类型仍为普通 skill"
+        ],
+        "suggestions": [
+          "design skill 应扩充：如何从 requirements.md 提取架构、模块、数据流的具体方法",
+          "long_task_ucd 需将 HARD-GATE 改为真正的 review-skill 节点，或移除该标记以避免误导",
+          "各 skill 应明确声明其产物路径供下游节点引用"
+        ]
+      },
+      {
+        "id": "generalization",
+        "name": "通用化(跨语言/项目)",
+        "weight": 16,
+        "score": 40,
+        "findings": [
+          "硬编码路径：docs/plans/*-srs.md、{{HARNESS_MEMORY_DIR}}/plans/",
+          "long_task_ucd 依赖特定文档命名规范（*-srs.md、*-ucd.md、YYYY-MM-DD-<topic>-ucd.md）",
+          "设计阶段描述为\"v8.5 demo blueprint\"的特定上下文",
+          "输出结构固定（3-5 条核心功能、架构概览 1-2 段），不适配不同规模项目",
+          "SRS 的 FR-xxx/NFR-xxx 标记法是项目特定的标记体系",
+          "无参数化配置机制（如语言/框架/文档目录均可自定义）"
+        ],
+        "suggestions": [
+          "将文档目录路径参数化，通过 {{VARS}} 或 tasks 传入",
+          "移除对 demo 特定上下文的引用",
+          "SRS 标记体系（FR-xxx）可通过占位符泛化"
+        ]
+      },
+      {
+        "id": "loopTasks",
+        "name": "循环与任务结构",
+        "weight": 12,
+        "score": 0,
+        "findings": [
+          "无任何 loop 节点",
+          "无 tasks-schema 声明",
+          "blueprint.json 中不存在 tasks 字段",
+          "无法处理批量/并行任务场景"
+        ],
+        "suggestions": [
+          "若后续需要处理多文件或多模块，应设计 loop 节点 + tasks-schema",
+          "参考 tasks-schema 规范声明 requiredFields/doneValues/example"
+        ]
+      },
+      {
+        "id": "clarity",
+        "name": "文档与可维护性",
+        "weight": 10,
+        "score": 65,
+        "findings": [
+          "节点标题简洁：requirements、long_task_ucd、design，均有描述",
+          "startNode 明确指定",
+          "线性流程易理解，无歧义",
+          "无共享 reference 文档",
+          "long_task_ucd 被截断导致内容不完整"
+        ],
+        "suggestions": [
+          "添加 shared reference 支持 SKILL.md 编写",
+          "补充节点间数据流说明（requirements 输出 → long_task_ucd 输入 → design 输入）"
+        ]
+      },
+      {
+        "id": "robustness",
+        "name": "健壮性与边界",
+        "weight": 10,
+        "score": 35,
+        "findings": [
+          "无 onFail 规则 → 任何节点失败均无恢复路径",
+          "design skill 缺少 HARNESS_MEMORY_DIR 不存在时的 mkdir 步骤",
+          "long_task_ucd 仅在文件缺失时跳过，未覆盖文件存在但内容为空的情况",
+          "requirements skill 无输入验证（用户消息为空时行为未定义）",
+          "设计节点无上下文预算意识，长文档可能导致截断"
+        ],
+        "suggestions": [
+          "为每个节点添加强错误处理（mkdir、write、read 失败）",
+          "添加用户输入为空/不明确时的默认行为",
+          "设计节点应处理超长 requirements.md 的边界情况"
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "kind": "skill",
+        "name": "requirements",
+        "role": "requirements",
+        "score": 13,
+        "findings": [],
+        "suggestions": [],
+        "dimensions": [
+          {
+            "id": "clarity",
+            "name": "清晰度与可读性",
+            "weight": 18,
+            "score": 15,
+            "findings": [
+              "结构清晰，4步编号流程，易追踪",
+              "中文标题配合英文步骤描述，层次分明",
+              "模板变量{{HARNESS_MEMORY_DIR}}使用正确，路径明确",
+              "错误消息使用中文，表述明确"
+            ],
+            "suggestions": [
+              "混合中英文可统一为一种语言",
+              "可补充示例说明核心功能条目的长度或格式预期"
+            ]
+          },
+          {
+            "id": "actionability",
+            "name": "可执行性与操作具体度",
+            "weight": 18,
+            "score": 15,
+            "findings": [
+              "步骤1-4顺序执行，依赖关系明确",
+              "mkdir → write → bp-context → bp-advance流程正确",
+              "步骤2明确定义了输出文件的三段结构（项目目标/核心功能/非功能要求）",
+              "条件错误处理（mkdir失败/write失败）有明确兜底"
+            ],
+            "suggestions": [
+              "步骤2可提供更具体的文件内容模板或示例",
+              "步骤2的三段内容可给出格式/长度指引"
+            ]
+          },
+          {
+            "id": "completeness",
+            "name": "完备性与自足性",
+            "weight": 18,
+            "score": 13,
+            "findings": [
+              "核心流程完整：mkdir、write、context通知、advance",
+              "mkdir和write有错误处理",
+              "步骤3（bp-context save）无错误处理分支"
+            ],
+            "suggestions": [
+              "添加bp-context save失败时的错误处理",
+              "添加用户消息为空或无明确需求时的处理逻辑"
+            ]
+          },
+          {
+            "id": "soundness",
+            "name": "技术合理性与无误导",
+            "weight": 16,
+            "score": 14,
+            "findings": [
+              "框架API使用正确（bp-advance ok/failed，bp-context save）",
+              "模板变量引用正确",
+              "无事实性错误或误导性表述"
+            ],
+            "suggestions": [
+              "无重大缺陷"
+            ]
+          },
+          {
+            "id": "robustness",
+            "name": "健壮性与边界覆盖",
+            "weight": 16,
+            "score": 12,
+            "findings": [
+              "仅覆盖mkdir和write的错误场景",
+              "步骤3无错误处理，用户无输入或输入不明确时无验证",
+              "缺少输入质量校验"
+            ],
+            "suggestions": [
+              "步骤3添加bp-context save失败的bp-advance failed分支",
+              "添加对用户消息内容的基本验证"
+            ]
+          },
+          {
+            "id": "generalization",
+            "name": "通用化与可复用性",
+            "weight": 14,
+            "score": 10,
+            "findings": [
+              "{{HARNESS_MEMORY_DIR}}模板化，目录可配置",
+              "输出结构（三段式）适用于一般需求提取场景",
+              "但输出格式（3-5条核心功能）固定，难以适配不同粒度需求"
+            ],
+            "suggestions": [
+              "可参数化核心功能的条目数量范围",
+              "非功能要求部分已有'可省'说明，保留此灵活性"
+            ]
+          }
+        ],
+        "llmScore": null
+      },
+      {
+        "kind": "skill",
+        "name": "long-task-ucd",
+        "role": "long-task-ucd",
+        "score": 11,
+        "findings": [],
+        "suggestions": [],
+        "dimensions": [
+          {
+            "id": "clarity",
+            "name": "清晰度与可读性",
+            "weight": 18,
+            "score": 14,
+            "findings": [
+              "名称/描述简洁明确",
+              "HARD-GATE 以突出样式标注，约束清晰",
+              "Checklist 编号清晰，步骤结构有序",
+              "Step 1 的子项使用粗体列表，层次分明",
+              "正文为简体中文，术语统一（UCD/SRS/FR-xxx/NFR）",
+              "存在截断标记，Step 2-9 详情不可见"
+            ],
+            "suggestions": [
+              "截断部分若恢复，整体清晰度可能提升，但当前结构已充分"
+            ]
+          },
+          {
+            "id": "actionability",
+            "name": "可执行性与操作具体度",
+            "weight": 18,
+            "score": 13,
+            "findings": [
+              "Checklist 列出 9 个必须完成的任务，顺序执行",
+              "Step 1 给出具体输入路径（docs/plans/*-srs.md）和输出物（UI 清单）",
+              "子项列举了抽取维度：用户角色/功能需求/NFR/约束/接口需求",
+              "定义了明确输出格式（docs/plans/YYYY-MM-DD-<topic>-ucd.md）",
+              "定义了跳过路径（无 UI 特性时衔接 design）",
+              "包含 AskUserQuestion 机制处理 SRS 细节不足",
+              "截断导致 Step 2-9 行动细节不可评估"
+            ],
+            "suggestions": [
+              "Step 2-9 若完整，可能提升本维度分数"
+            ]
+          },
+          {
+            "id": "completeness",
+            "name": "完备性与自足性",
+            "weight": 18,
+            "score": 10,
+            "findings": [
+              "覆盖完整阶段：SRS阅读→UI范围抽取→风格定义→提示词生成→样式token→审批→文档化→衔接设计",
+              "定义了适用条件判断逻辑（有UI特性/无UI特性）",
+              "Step 1 包含完整的输入/输出/约束/接口需求分析",
+              "Checklist 覆盖文档产出（ucd.md）和 git 提交",
+              "衔接机制明确（long-task-design）",
+              "Step 2-9 内容截断，风格选项/mood board/组件提示词/页面提示词/token定义/分章审批细节不可见"
+            ],
+            "suggestions": [
+              "截断严重影响了完备性评估；如内容完整可能达 14-15 分"
+            ]
+          },
+          {
+            "id": "soundness",
+            "name": "技术合理性与无误导",
+            "weight": 16,
+            "score": 12,
+            "findings": [
+              "HARD-GATE 约束符合工作流阶段逻辑（审批前禁止实现）",
+              "Skip 逻辑合理：无UI特性时正确跳转到设计",
+              "AskUserQuestion 用于补全需求而非假设，符合工程实践",
+              "UCD 作为独立阶段位于设计之前，流程顺序正确",
+              "提示词驱动（text-to-image）的样式指南产出方式合理",
+              "无明显技术误导或错误表述",
+              "截断部分未发现异常信号"
+            ],
+            "suggestions": [
+              "当前截断内容未发现技术性错误"
+            ]
+          },
+          {
+            "id": "robustness",
+            "name": "健壮性与边界覆盖",
+            "weight": 16,
+            "score": 9,
+            "findings": [
+              "显式处理无UI特性的边界情况并给出明确结论",
+              "通过 AskUserQuestion 处理 SRS 细节不足的分支",
+              "定义了文件名模板（日期+topic）避免冲突",
+              "HARD-GATE 提供防错保护，防止提前实现",
+              "git 提交步骤包含持久化保证",
+              "截断导致 Step 2-9 的错误处理/边界覆盖不可评估"
+            ],
+            "suggestions": [
+              "截断内容若完整，预期可覆盖风格审批流程、异常中断等边界"
+            ]
+          },
+          {
+            "id": "generalization",
+            "name": "通用化与可复用性",
+            "weight": 14,
+            "score": 10,
+            "findings": [
+              "基于参数化 SRS 输入，适配任意项目",
+              "UCD 文档路径含 <topic> 占位，可泛化",
+              "提示词生成方法论（text-to-image）适用于多种 UI 类型",
+              "阶段衔接（skip-to-design）提供分支路径",
+              "名称采用 long-task-ucd 前缀，支持工作流系统注册",
+              "Checklist 模板化程度高，可迁移到其他规范生成任务"
+            ],
+            "suggestions": [
+              "当前截断未显示组件/页面提示词模板的具体形式；若模板化程度高，可进一步加分"
+            ]
+          }
+        ],
+        "llmScore": null
+      },
+      {
+        "kind": "skill",
+        "name": "design",
+        "role": "design",
+        "score": 7,
+        "findings": [],
+        "suggestions": [],
+        "dimensions": [
+          {
+            "id": "clarity",
+            "name": "清晰度与可读性",
+            "weight": 18,
+            "score": 8,
+            "findings": [
+              "Artifact uses consistent Chinese section headers (# 设计, ## 输入, ## 步骤)",
+              "Sequentially numbered steps (1-4) with clear progression",
+              "{{VAR}} placeholder syntax is consistent throughout",
+              "Step 1 '执笔' is ambiguous — could mean 'write to' or 'create' file",
+              "Description (v8.5 demo blueprint) suggests a highly specific context",
+              "Missing required content spec for the '前置条件不满足' message"
+            ],
+            "suggestions": [
+              "Clarify '执笔' action: write content into design.md vs. just create file",
+              "Specify minimum length/structure expectations for the blocked case message",
+              "Consider adding a step index or stage identifier in the name/description"
+            ]
+          },
+          {
+            "id": "actionability",
+            "name": "可执行性与操作具体度",
+            "weight": 18,
+            "score": 7,
+            "findings": [
+              "Step 3 specifies three concrete content sections with guidance",
+              "Step 1 correctly handles missing prerequisites with explicit bp-advance blocked",
+              "Step 4 has clear success exit (bp-advance ok)",
+              "Step 2 '读取' is underspecified — no guidance on how to parse/interpret requirements.md content",
+              "No guidance on what to do if requirements.md exists but is empty or malformed",
+              "No guidance on whether to overwrite an existing design.md"
+            ],
+            "suggestions": [
+              "Step 2 should specify parsing approach or expected requirements.md format",
+              "Add guidance for malformed/empty requirements.md",
+              "Clarify overwrite vs. merge behavior for existing design.md"
+            ]
+          },
+          {
+            "id": "completeness",
+            "name": "完备性与自足性",
+            "weight": 18,
+            "score": 6,
+            "findings": [
+              "Only handles the missing-file failure case; no other error scenarios",
+              "No input validation of requirements.md content",
+              "No success criteria beyond 'bp-advance ok'",
+              "Missing guidance on how to extract/interpret architecture, modules, and data flow from requirements",
+              "No handling for write failures to design.md",
+              "No recovery or rollback mechanism"
+            ],
+            "suggestions": [
+              "Add error handling for I/O failures, empty input, malformed content",
+              "Specify expected requirements.md format or provide parsing guidance",
+              "Add success criteria beyond exit code"
+            ]
+          },
+          {
+            "id": "soundness",
+            "name": "技术合理性与无误导",
+            "weight": 16,
+            "score": 8,
+            "findings": [
+              "Placeholder {{HARNESS_MEMORY_DIR}} and {{REQUIREMENTS_PATH}} follow framework conventions",
+              "bp-advance blocked/ok exit semantics are correct",
+              "Sequential step flow is logical and sound",
+              "Step 1 correctly creates design.md with error message on missing input",
+              "No contradictory or misleading instructions"
+            ],
+            "suggestions": [
+              "Consider what happens if HARNESS_MEMORY_DIR itself doesn't exist — no mkdir implied",
+              "No mention of whether bp-advance url is inferred or must be provided"
+            ]
+          },
+          {
+            "id": "robustness",
+            "name": "健壮性与边界覆盖",
+            "weight": 16,
+            "score": 5,
+            "findings": [
+              "Only covers two states: requirements.md exists (happy path) and missing (blocked)",
+              "No coverage for: empty requirements.md, permission errors, very large files, malformed placeholders",
+              "No mention of what happens if design.md already exists",
+              "Missing HARNESS_MEMORY_DIR is not handled",
+              "No step timeout or long-run protection"
+            ],
+            "suggestions": [
+              "Add I/O error handling for steps 1, 2, 3",
+              "Specify behavior when design.md pre-exists (overwrite, diff, skip)",
+              "Handle empty/invalid requirements.md gracefully"
+            ]
+          },
+          {
+            "id": "generalization",
+            "name": "通用化与可复用性",
+            "weight": 14,
+            "score": 6,
+            "findings": [
+              "Skill is tightly coupled to a specific demo blueprint (v8.5 demo, Stage 2)",
+              "{{HARNESS_MEMORY_DIR}}/plans/ path is framework-specific and hardcoded",
+              "Output is narrowly scoped to a single design.md with fixed structure",
+              "Can be repurposed for other requirements→design workflows with path customization",
+              "Generic 'design' name is good for reuse, but description ties it to demo context"
+            ],
+            "suggestions": [
+              "Remove 'v8.5 demo blueprint' from description for broader applicability",
+              "Parameterize input/output paths for reuse across different project contexts",
+              "Abstract the output schema (architecture/modules/data-flow) as configurable"
+            ]
+          }
+        ],
+        "llmScore": null
+      }
+    ],
+    "artifactMean": 10,
+    "summary": "工作流拓扑合法但严重缺乏失败恢复机制（无 onFail 规则），且 long_task_ucd 的 HARD-GATE 仅为 SKILL.md 文本而非框架门禁节点，无实际约束力。requirements skill 质量尚可，long_task_ucd 内容详尽但被截断，design skill 过于简略且缺乏健壮性。整体泛化能力弱，hardcoded 路径和 v8.5 demo 特定上下文限制了跨项目复用。",
+    "topIssues": [
+      "blueprint.json 所有节点均无 onFail 规则——节点失败将直接中止而无重试/回退",
+      "long_task_ucd 的 <HARD-GATE> 是文本标注而非框架门禁节点，无法起到真实验收约束作用",
+      "design skill 过于单薄（仅 4 步），缺少从 requirements 提取架构/模块/数据流的具体方法论",
+      "工作流无 loop 节点和 tasks-schema，无法处理批量或并行任务场景",
+      "硬编码路径（docs/plans/*-srs.md、v8.5 demo）严重制约泛化能力"
+    ]
+  }
+}

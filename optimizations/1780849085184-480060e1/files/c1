@@ -1,0 +1,20 @@
+---
+name: design
+description: Read requirements and produce a brief design.md describing structure and data flow.
+role: design
+---
+
+# 设计
+
+## 输入
+
+`{{REQUIREMENTS_PATH:={{HARNESS_MEMORY_DIR}}/plans/requirements.md}}`
+
+## 步骤
+
+1. 检查 `{{REQUIREMENTS_PATH}}` 是否存在；若不存在，在 `{{HARNESS_MEMORY_DIR}}/plans/design.md` 中写入内容说明「前置条件不满足：缺少 requirements.md」，随后退出。
+2. 读取 `{{REQUIREMENTS_PATH}}`
+3. 写 `{{HARNESS_MEMORY_DIR}}/plans/design.md`，含：
+   - **架构概览**（1-2 段，不必详细）
+   - **关键模块**（3-5 条）
+   - **数据流向**（简短句子）

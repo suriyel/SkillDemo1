@@ -1,0 +1,5 @@
+# Auto-generated for blueprint git repo
+# Skip absolute path crumbs in meta.json that leak host filesystem layout.
+# meta.json itself is tracked (it has audit value), but if you want it
+# fully untracked uncomment:
+# meta.json

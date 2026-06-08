@@ -1,0 +1,219 @@
+{
+  "id": "1780647636485-abe6f9c1",
+  "createdAt": "2026-06-05T08:22:13.729Z",
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "durationMs": 97244,
+  "artifactCount": 3,
+  "batches": 1,
+  "failedBatches": 0,
+  "mergeFailed": false,
+  "card": {
+    "schema": "bp-eval/2",
+    "overallScore": 48,
+    "computedOverall": 48,
+    "llmOverall": 48,
+    "grade": "D",
+    "dimensions": [
+      {
+        "id": "topology",
+        "name": "拓扑与流程完整性",
+        "weight": 18,
+        "score": 85,
+        "findings": [
+          "startNode 为 requirements 且节点存在，节点可连通",
+          "3个节点，2条边，形成线性 DAG，无环无分叉",
+          "所有 edges 的 from/to 均有效对应实际节点 ID",
+          "无孤立节点，所有节点均可达",
+          "缺少 alternate/terminal 路径设计，流程末端为 design 无后续节点（符合线性终端设计）"
+        ],
+        "suggestions": [
+          "建议在 design 节点后显式声明 final/terminal 状态或 done 节点",
+          "考虑增加错误恢复分支（不同 onFail 策略对应不同错误类型）",
+          "可增加 abort 节点作为全局异常终端"
+        ]
+      },
+      {
+        "id": "gating",
+        "name": "门禁与失败恢复",
+        "weight": 18,
+        "score": 35,
+        "findings": [
+          "long_task_ucd 的 SKILL.md 内含 <HARD-GATE> 文本包裹块，但该门禁不是节点层面的 onFail 配置，只是文档约束",
+          "blueprint.json 中 nodes 无一配置 onFail 属性",
+          "无 maxAttempts 限制，无 rewindTo 指向",
+          "long_task_ucd 作为 gate 类节点但未在节点属性中声明 gate 模式",
+          "无法防止无限 rewind 风险"
+        ],
+        "suggestions": [
+          "在 long_task_ucd 节点添加 onFail:{maxAttempts:2,rewindTo:'requirements'} 实现真实门禁",
+          "建议将 HARD-GATE 改为带 bp-advance blocked 的三态退出码契约节点",
+          "缺少失败后的重试上限，易造成死循环",
+          "可参考 BLUEPRINT-API.md 规范，将门禁脚本独立为 skill 的 bp-advance blocked 分支"
+        ]
+      },
+      {
+        "id": "skillQuality",
+        "name": "Skill 指令质量",
+        "weight": 16,
+        "score": 61,
+        "findings": [
+          "requirements：步骤清晰，{{HARNESS_MEMORY_DIR}} 占位符正确，缺 bp-advance 实际调用（仅文字描述『按 banner 上报』）",
+          "long_task_ucd：HardGate 包裹存在但无 bp-advance 退出码规范，提及 TodoWrite/AskUserQuestion 非标准 CLI",
+          "design：{{HARNESS_MEMORY_DIR}} 占位符正确，『按 banner 指令上报』表述模糊，无 bp-advance 显式调用",
+          "三个 skill 均未正确使用 bp-context/bp-tasks 与引擎交互"
+        ],
+        "suggestions": [
+          "统一在每个 skill 结尾添加『bp-advance ok』或『bp-advance blocked/failed』命令",
+          "删除非标准 CLI 依赖，统一用 bp-tasks 替代 TodoWrite",
+          "HARD-GATE 应与 bp-advance blocked 状态联动，而非仅文本警告"
+        ],
+        "llmScore": 61
+      },
+      {
+        "id": "generalization",
+        "name": "通用化(跨语言/项目)",
+        "weight": 16,
+        "score": 38,
+        "findings": [
+          "requirements：硬编码路径 {{HARNESS_MEMORY_DIR}}/plans/requirements.md",
+          "long_task_ucd：hardcoded 路径 docs/plans/*-srs.md、docs/plans/YYYY-MM-DD-<topic>-ucd.md；提及 Midjourney/DALL-E/Stable Diffusion 工具名",
+          "design：硬编码路径 plans/requirements.md、plans/design.md",
+          "所有路径均为具体文件系统路径，无法跨项目复用"
+        ],
+        "suggestions": [
+          "将具体路径改为变量占位符如 {{SRS_DOC}}、{{UCD_OUTPUT}}、{{REQUIREMENTS_MD}}",
+          "移除具体工具名（Midjourney/DALL-E），改为 {{IMAGE_MODEL}} 配置注入",
+          "通过 bp-context 动态传入文件路径而非写死",
+          "使 skill 可配置化：语言/框架/端口等均通过 variables 注入"
+        ]
+      },
+      {
+        "id": "loopTasks",
+        "name": "循环与任务结构",
+        "weight": 12,
+        "score": 0,
+        "findings": [
+          "blueprint 无任何 loop 类型节点",
+          "无 tasks-schema 声明",
+          "无 maxIterations 配置"
+        ],
+        "suggestions": [
+          "如需循环任务，应添加 loop 节点类型并声明 tasks-schema",
+          "当前线性流程不需要 loop，但评分维度不适用时应标注 N/A 而非 0"
+        ]
+      },
+      {
+        "id": "clarity",
+        "name": "文档与可维护性",
+        "weight": 10,
+        "score": 60,
+        "findings": [
+          "title：requirements、long-task-ucd、design 较简洁但描述性不足（应为中文如『需求提取』『UCD 生成』『架构设计』）",
+          "description 字段：requirements 和 design 描述较清晰，long_task_ucd 描述为条件触发语句",
+          "SKILL.md：requirements 和 design 结构简单可读，long_task_ucd 内容详细但过长（>200行）",
+          "缺少共享参考文档（如 schema 规范、bp-advance 契约说明）"
+        ],
+        "suggestions": [
+          "节点 title 建议改为更具体的中文描述，如『需求提取（requirements-extract）』『UCD 样式指南生成』『架构设计』",
+          "long_task_ucd SKILL.md 超过 200 行，建议拆分为多个子 skill 或引用共享片段",
+          "添加 README 说明各节点的输入输出契约",
+          "补充节点间的依赖关系文档"
+        ]
+      },
+      {
+        "id": "robustness",
+        "name": "健壮性与边界",
+        "weight": 10,
+        "score": 42,
+        "findings": [
+          "requirements：无错误处理，mkdir 或 write 失败无 bp-advance failed 上报",
+          "long_task_ucd：HARD-GATE 为文本约束无引擎级 enforce，AskUserQuestion 缺失时流程可能卡住",
+          "design：无前置条件检查（如 requirements.md 不存在时的处理）",
+          "上下文 budget：无 awareness，缺少 context-degrade 处理",
+          "无 abort/halt 节点的显式定义"
+        ],
+        "suggestions": [
+          "每个 skill 添加『前置检查→执行→bp-advance』的标准错误处理三段式",
+          "添加 bp-context 记录当前 context 使用量，接近阈值时触发 degrade",
+          "定义全局 abort 节点处理不可恢复错误",
+          "在 long_task_ucd 增加『SRS 不存在时立即 bp-advance blocked』的兜底逻辑"
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "kind": "skill",
+        "name": "requirements",
+        "role": "requirements",
+        "score": 65,
+        "findings": [
+          "缺少 bp-advance 调用，步骤描述为『写完即按 banner 指令上报』但未实际执行 bp-advance 命令",
+          "未使用 bp-context 或 bp-tasks 等 CLI，直接写文件缺少与引擎的交互",
+          "HARNESS_MEMORY_DIR 占位符格式正确",
+          "单一职责，步骤清晰，无硬编码项目值",
+          "描述和标题较清晰，但节点 title 未区分阶段（如应改为『需求分析』）"
+        ],
+        "suggestions": [
+          "在步骤3后添加『执行 bp-advance ok』或『bp-advance blocked <原因>』上报状态",
+          "建议使用 bp-context 保存上下文产物路径供下游节点引用",
+          "节点 title 建议改为更具体的描述，如『requirements-extract』或『需求提取』",
+          "补充错误处理：如目录创建失败或文件写入失败应调用 bp-advance failed"
+        ]
+      },
+      {
+        "kind": "skill",
+        "name": "long-task-ucd",
+        "role": "long-task-ucd",
+        "score": 57,
+        "findings": [
+          "缺少 bp-advance 退出码契约（0/10/1/2），未明确说明 skill 完成/阻塞/失败时的标准退出方式",
+          "hardgate 包裹块使用了 <HARD-GATE> 标签但未见 bp-advance 原生三态门禁模式（ok/blocked/failed）",
+          "hardgate 内无 onFail 配置（rewindTo、maxAttempts），无法防止死循环或无限重试",
+          "hardcoded 路径 `docs/plans/*-srs.md`、`docs/plans/YYYY-MM-DD-<topic>-ucd.md` 泄露项目结构",
+          "提及具体工具 Midjourney/DALL-E/Stable Diffusion，限制了适用范围",
+          "依赖 TodoWrite、AskUserQuestion 等非标准 CLI 调用，合约不清晰",
+          "终态过渡使用 `long-task:long-task-design` 子 skill 调用，但未说明若设计 skill 失败时的回退策略",
+          "步骤4/5 要求生成组件级/页面级提示词，但未定义提示词的质量验收标准"
+        ],
+        "suggestions": [
+          "按 BLUEPRINT-API.md 规范，为每个阶段添加明确的 `bp-advance <status>` 调用，status 仅限 ok/blocked/failed 并匹配退出码",
+          "将所有文件系统路径改为从 variables/placeholder 读取（如 `{{SRS_DOC}}`、`{{UCD_OUTPUT}}`），避免硬编码",
+          "在 HARD-GATE 前添加 onFail 块：`onFail: { maxAttempts: 2, rewindTo: \"Step-2\" }` 确保安全回退",
+          "用通用占位符替代具体工具名（如 {{IMAGE_MODEL}}），通过配置注入实际工具链",
+          "统一使用 bp-tasks 添加任务项，删除对非标准 CLI 的依赖",
+          "在衔接到设计节点前增加条件判断：若设计 skill 不存在则宣告失败而非卡死"
+        ]
+      },
+      {
+        "kind": "skill",
+        "name": "design",
+        "role": "design",
+        "score": 62,
+        "findings": [
+          "可操作性：步骤清晰但『按 banner 指令上报』表述模糊，未明确指定 `bp-advance` 命令及参数（如 `bp-advance ok`/`bp-advance blocked`）， auditor 无法确认上报机制是否正确",
+          "占位符：使用了正确的 `{{HARNESS_MEMORY_DIR}}` 格式",
+          "generalization：路径 `plans/requirements.md` 和 `plans/design.md` 硬编码为具体项目子路径，不够通用",
+          "缺少 bp-context/bp-tasks 使用场景（但本节点不需要，故此项不扣分）",
+          "未定义错误处理和边界情况（如 requirements.md 不存在时该如何）",
+          "单一职责：良好，专注于设计阶段"
+        ],
+        "suggestions": [
+          "将『按 banner 指令上报』改为明确的 `bp-advance ok` 命令",
+          "将 `plans/` 子路径改为更通用的占位符或通过 bp-context 动态传入",
+          "添加『前置条件检查』步骤（如验证 requirements.md 是否存在）",
+          "考虑在输出文件路径中使用状态变量（如 `{{OUTPUT_PATH}}`）而非固定路径，使节点可在不同项目中复用",
+          "建议补充『失败时 `bp-advance blocked`』的明确说明"
+        ]
+      }
+    ],
+    "artifactMean": 61,
+    "summary": "该工作流为简单线性三节点 DAG（requirements→long_task_ucd→design），拓扑结构健康但过于简陋，缺乏分支和备用路径。核心问题是门禁机制仅以 SKILL.md 内文本形式存在，未在节点层面配置 onFail 和 maxAttempts，导致失败恢复能力几乎为零；三个 skill 均未正确调用 bp-advance 契约，上报机制形同虚设；所有 skill 严重依赖硬编码路径（docs/plans/、{{HARNESS_MEMORY_DIR}}/plans/），无法跨项目复用。综合评分 48，Grade D。",
+    "topIssues": [
+      "门禁缺失：long_task_ucd 节点的 HARD-GATE 仅是文本说明，无节点级 onFail 配置，无法防止无限重试",
+      "bp-advance 契约未落实：三个 skill 均未显式调用 bp-advance 命令，上报机制不明确",
+      "路径硬编码严重：docs/plans/*-srs.md、{{HARNESS_MEMORY_DIR}}/plans/ 等路径直接写死，跨项目复用性极低",
+      "无错误处理：requirements 和 design 均无前置检查和失败上报，流程鲁棒性不足"
+    ]
+  }
+}

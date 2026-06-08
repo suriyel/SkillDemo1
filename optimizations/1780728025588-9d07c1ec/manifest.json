@@ -1,0 +1,30 @@
+{
+  "id": "1780728025588-9d07c1ec",
+  "createdAt": "2026-06-06T06:41:10.331Z",
+  "changes": [
+    {
+      "kind": "skill",
+      "name": "requirements",
+      "relPath": "skills/requirements/SKILL.md",
+      "rationale": "`bp-context save` 不是合法操作（合法操作仅限 get/set/load/query/push/pop/clear），会立即导致节点失败；删除该无效步骤，产物路径已通过文件写入暴露给下游。",
+      "beforeSha": "fa8db433bf475ca7a8a4a375e45bb629e66ea67e27fd06f1ef2e1c42009d8936",
+      "afterFile": "c0"
+    },
+    {
+      "kind": "skill",
+      "name": "design",
+      "relPath": "skills/design/SKILL.md",
+      "rationale": "移除步骤1的 `bp-advance blocked` 和步骤4的 `bp-advance ok` — 前者应让模型自行在发现前置条件不满足时上报 blocked，后者属冗余重述（框架会在节点任务完成后自动推进）；保留前置条件判断逻辑本身即可。",
+      "beforeSha": "8b83dfef2a86c183dc6f4ec06329fc1e24ac1562d9fff073524f1ac31e8fa71c",
+      "afterFile": "c1"
+    }
+  ],
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "artifactCount": 3,
+  "analyzed": 3,
+  "changedCount": 2,
+  "unchanged": 1,
+  "skipped": [],
+  "durationMs": 44738
+}

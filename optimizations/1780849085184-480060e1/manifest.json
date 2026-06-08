@@ -1,0 +1,30 @@
+{
+  "id": "1780849085184-480060e1",
+  "createdAt": "2026-06-07T16:19:21.056Z",
+  "changes": [
+    {
+      "kind": "skill",
+      "name": "requirements",
+      "relPath": "skills/requirements/SKILL.md",
+      "rationale": "移除 step 3 的 `bp-advance ok` 显式调用（模型自行上报，末尾无需重述），保留错误处理的 failed 调用以确保可定位失败。",
+      "beforeSha": "59384b3590e91fe4e9e209c79ea83a33bb089df7b31dee844e5271480fdf4056",
+      "afterFile": "c0"
+    },
+    {
+      "kind": "skill",
+      "name": "design",
+      "relPath": "skills/design/SKILL.md",
+      "rationale": "frontmatter `role=design` 语法错误（应为 `role: design`）；`description` 含有版本特定措辞；step 1 提及「上报 blocked 并退出」属于框架已注入行为，应剥离；其余结构基本合理，仅做最小修正。",
+      "beforeSha": "d1d2add1f05f1e5b54c882b3c7b5be07cff1639ea4d02986e5bd549a649de997",
+      "afterFile": "c1"
+    }
+  ],
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "artifactCount": 3,
+  "analyzed": 3,
+  "changedCount": 2,
+  "unchanged": 1,
+  "skipped": [],
+  "durationMs": 75866
+}

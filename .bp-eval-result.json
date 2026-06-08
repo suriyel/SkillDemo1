@@ -1,0 +1,231 @@
+{
+  "schema": "bp-eval/2",
+  "overallScore": 34,
+  "grade": "F",
+  "dimensions": [
+    {
+      "id": "topology",
+      "name": "拓扑与流程完整性",
+      "weight": 18,
+      "score": 65,
+      "findings": [
+        "startNode \"requirements\" 存在,三条边 requirements→long_task_ucd→design 端点全部有效,无孤立节点,DAG 本身合法。",
+        "工作流结构过于扁平:线性三节点无任何分支、聚合、循环,缺乏对失败/无 UI 场景的回退路径——long_task_ucd 文案内有 \"skipping UCD phase\" 分支但工作流图无对应边承载。",
+        "design 节点是终态但无产物消费方声明,后续若接 implement 节点将再次引入契约不确定性。",
+        "startNode \"requirements\" 与 3 节点 x/y 坐标 (52,131) (82,237) (130,352) 表明是手工拖拽布局,无分区/分组,没有利用节点坐标表达「阶段」概念。"
+      ],
+      "suggestions": [
+        "为 long_task_ucd 增加一条条件边到 design(如条件 `when: ui_skipped == true`),覆盖 SRS 无 UI 特性的快路径。",
+        "考虑在 design 之后追加 implement/test 等下游节点并把 design 节点改为门禁(gate_design 评审 design.md 后再放行)。",
+        "为每个节点声明 expectedUpstreamArtifacts 字段,在路由层做契约校验(框架级)。",
+        "用 stage 容器或子图(若 schema 支持)把 requirements / long_task_ucd / design 划入同一 stage 视觉块,提升可读性。"
+      ]
+    },
+    {
+      "id": "gating",
+      "name": "门禁与失败恢复",
+      "weight": 18,
+      "score": 15,
+      "findings": [
+        "整条工作流零门禁:无 review-skill 节点、无脚本化质量校验、无 onFail 块、无 maxAttempts 边界。",
+        "三节点都把\"通过\"完全交给 LLM 自觉,requirements.md / UCD 文档 / design.md 的合规性无人复核。",
+        "无任何重试/回卷机制:requirements 写崩了 design 会直接基于空 requirements.md 产 design,失败沿线性扩散。",
+        "没有 onFail → rewindTo 的边,halt 死局一旦出现只能靠 context-degrade/auto-resume 兜底,无结构化恢复路径。"
+      ],
+      "suggestions": [
+        "在 requirements 与 long_task_ucd 之间插入 gate_requirements(运行 requirements-lint.cjs 校验必填二级标题/字节下限/无 TODO 残留)。",
+        "在 long_task_ucd 与 design 之间插入 gate_ucd(WCAG 配色对比度硬校验 + 风格 token 完整性校验)。",
+        "在 design 之后插入 gate_design(关键模块/数据流章节存在性 + 至少 N 字节硬门)。",
+        "每个 gate 配 onFail { rewindTo: <上游节点 id>, maxAttempts: 3, when: \"status == failed\" },并用 effectiveMaxAttempts 而非裸 maxAttempts 防止 per-task 预算被前序任务吃掉。"
+      ]
+    },
+    {
+      "id": "skillQuality",
+      "name": "Skill 指令质量",
+      "weight": 16,
+      "score": 32,
+      "findings": [
+        "三个 SKILL.md 均未显式调用 `bp-advance` 上报三态,只写\"按 banner 指令上报\",依赖框架隐式 banner,SKILL.md 自文档性极差。",
+        "requirements SKILL.md 未声明\"用户消息\"从哪取(spawn prompt / bp-context / cwd 文件?),输入源不明。",
+        "long_task_ucd 文档被截断(3.2/3.3/Step 5/Step 6/Step 8/Step 9 全缺),且单 skill 承担 7 项独立职责严重过载。",
+        "design SKILL.md 假设读 requirements.md,但工作流上游 long_task_ucd 不会产 requirements.md,契约完全断裂。",
+        "三份 SKILL.md 均未使用 `bp-context` / `bp-tasks`,产物只能靠路径反查,违反「任务数据是 pull 模型」的可观测性原则。"
+      ],
+      "suggestions": [
+        "三份 SKILL.md 都补\"上报规则\"小节,显式列出 ok/failed/blocked 三种 `bp-advance` 调用样例 + reason 文案。",
+        "把 long_task_ucd 拆为 scope / style / prompts / writer 四个 sub-skill,主 skill 只做编排。",
+        "补全 long_task_ucd 截断段落(3.2 字体、3.3 间距、Step 5 页面 prompt、Step 8 文档模板、Step 9 收尾)。",
+        "design 节点要么改成读 UCD 产物、要么重接上游为 requirements 节点(去掉 long_task_ucd 中转)。",
+        "三份 SKILL.md 在写盘后统一追加 `bp-context write --key <artifact>` 把产物注册到框架索引,让下游用 `bp-context read` 解耦路径。"
+      ]
+    },
+    {
+      "id": "generalization",
+      "name": "通用化(跨语言/项目)",
+      "weight": 16,
+      "score": 28,
+      "findings": [
+        "long_task_ucd 全文硬编码 `docs/plans/*-srs.md` 与 `docs/plans/YYYY-MM-DD-<topic>-ucd.md`,未走 `{{HARNESS_MEMORY_DIR}}` 占位符。",
+        "long_task_ucd 硬编码子 skill 名 `long-task:long-task-design`,未参数化。",
+        "UCD 内的色板/字体/间距 token 命名(--color-primary 等)虽是行业惯例但未抽出 schema 块做硬约束,跨项目复用时易被 LLM 自由发挥污染。",
+        "frontmatter description 残留\"Stage 1/2 of v8.5 demo blueprint\"等内部版本号,污染 skill 元数据。",
+        "requirements / design 的 description 也带\"v8.5 demo blueprint\"暴露项目内版本号。"
+      ],
+      "suggestions": [
+        "long_task_ucd 全文 `docs/plans/...` 替换为 `{{HARNESS_MEMORY_DIR}}/plans/...`,子 skill 名改 `{{NEXT_SKILL}}`。",
+        "UCD 内的 token 命名通过 placeholder_render 的 schema block 硬约束(类似 gate-template 的 buildSchemaBlock)。",
+        "把三个 description 改为意图式短句,删除\"v8.5 demo blueprint\"等暴露内部版本号的噪声。",
+        "把 long_task_ucd 抽到全局 library(`SEED_PROFILES` 或 builtin/)而不是放在 my-test 这个 user 项目里,避免每个项目复制一份。"
+      ]
+    },
+    {
+      "id": "loopTasks",
+      "name": "循环与任务结构",
+      "weight": 12,
+      "score": 25,
+      "findings": [
+        "工作流无任何 loop 节点,long_task_ucd 内的 9 步 Checklist 写在自然语言里,未通过 `bp-tasks add` 注册为可被框架追踪的任务项。",
+        "无 tasks-schema 声明,无 doneValues / example,无 maxIterations 边界。",
+        "无 producer 节点喂 tasks,即便改成 loop 也无上游契约。",
+        "对 3 节点线性 DAG 而言循环缺失可接受,但工作流一旦扩展(多 SRS 批量出 UCD / 多模块并行设计)即无承载结构。"
+      ],
+      "suggestions": [
+        "短期:把 long_task_ucd 的 9 步 Checklist 改为 `bp-tasks add` 调用序列,失败步骤可被框架追踪/重试。",
+        "中期:考虑把 long_task_ucd 改为循环(若需要支持多 SRS 批量出 UCD),声明 tasks-schema 与 maxIterations。",
+        "为下游 loop 节点预声明 tasks-schema.requiredFields,降低 LLM 拼装任务的自由度。"
+      ]
+    },
+    {
+      "id": "clarity",
+      "name": "文档与可维护性",
+      "weight": 10,
+      "score": 48,
+      "findings": [
+        "顶层 title=\"测试\"、description=\"\" 是占位值,蓝图库检索/复用时无业务含义可循。",
+        "节点标题 requirements / long-task-ucd / design 命名尚可,符合 stage 顺序。",
+        "requirements / design SKILL.md 步骤短到 2 行,缺少成功判据 / 最小示例 / 产物契约清单。",
+        "long_task_ucd 文档冗长但被截断,可维护性反而更差。",
+        "version=\"1.0.0\" 与 lastSyncedAt=\"2026-05-10\" 之间有 20+ 天的同步漂移,无 changelog/变更说明。"
+      ],
+      "suggestions": [
+        "顶层 title 改为业务意图式短句(如\"v8.5 演示工作流:需求→UCD→设计\"),description 补 1-2 句适用场景。",
+        "每个 SKILL.md 末尾补\"成功判据 + 最小示例\"两节(参考 long-task-lite 的 derivation 字段思路)。",
+        "把 long_task_ucd 截断部分补全后整体作为 single source of truth,避免 LLM 在残缺上下文里自补。",
+        "为 blueprint 增加 changelog 字段或在 description 末尾追加 \"changelog: v1.0.0 初始 3 节点 demo\"。"
+      ]
+    },
+    {
+      "id": "robustness",
+      "name": "健壮性与边界",
+      "weight": 10,
+      "score": 22,
+      "findings": [
+        "所有 SKILL.md 都不处理输入缺失/为空:用户消息空、requirements.md 不存在、SRS 不存在时 agent 大概率直接产空产物后报 ok。",
+        "无文件已存在时的覆盖/备份/冲突处理策略(同一工作流重跑会静默覆盖历史产物)。",
+        "无 mkdir / write 工具返回非零的失败上报指引,错误会原样抛给上层。",
+        "无上下文预算意识(对长 UCD / 多风格对比场景易触发 context-degrade,无 _context-budget 之类的预算自检)。",
+        "无无限重试/回卷保护(虽然也没配置重试,但长期不补会成为隐性债务)。"
+      ],
+      "suggestions": [
+        "三份 SKILL.md 开头加\"输入存在性检查\"小节:文件不存在直接 `bp-advance --status blocked`。",
+        "写盘前 `test -f <path> && cp <path> <path>.prev.<ts>.md` 做历史快照,失败时回退到 blocked 让人工介入。",
+        "在 long_task_ucd Step 4(组件 prompt 生成)前加一次 `bp-context get key=context_budget` 自检,超阈值时降级为只生成核心组件。",
+        "为 onFail 配 autoSeedRejected 守卫,避免一个空 loop 把 maxAttempts 全部用完(参见 long-task-ut 修复)。"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "skill",
+      "name": "requirements",
+      "role": "需求分析(Stage 1 需求提取)",
+      "score": 52,
+      "findings": [
+        "「按 banner 指令上报」措辞过软:未点名 `bp-advance` 工具,未说明三态分别在何种条件下报 ok / failed / blocked,SKILL.md 自文档性差,且不指引 agent 在 banner 未注入时如何兜底。",
+        "「从用户最新消息中识别核心需求」输入源不明:未指明用户消息来自 spawn prompt、cwd 文件、还是 `bp-context` 查询结果,产物不可复现。",
+        "下游契约不显式:long_task_ucd 与 design 节点对 requirements.md 的字段约定无任何说明,改章节命名就可能让下游读不到所需锚点。",
+        "完全无失败/边界处理:用户消息为空/全是闲聊、requirements.md 已存在、mkdir/write 失败均无指引。",
+        "未使用 `bp-context` / `bp-tasks` 等框架 CLI,产物仅裸落盘,违反「任务数据是 pull 模型」的可观测性原则。",
+        "占位符仅用 `{{HARNESS_MEMORY_DIR}}` 一个,无版本号语义,无法回溯。",
+        "description 字段「Stage 1 of v8.5 demo blueprint」暴露内部版本号,污染元数据。",
+        "步骤短到 2 行,缺少「成功产物示例」与「判定 ok 的硬条件」,完成度难以自检。"
+      ],
+      "suggestions": [
+        "把 `bp-advance` 显式写进 SKILL.md 并给出 ok/failed/blocked 三态调用样例 + 触发条件,并指明命令所在路径。",
+        "在「步骤 0」明确输入源契约(推荐 `bp-context read --key user_prompt`)。",
+        "新增「下游契约」小节,显式列出 design / long_task_ucd 期望从 requirements.md 读到的二级标题锚点(## 项目目标 / ## 核心功能 / ## 非功能要求)。",
+        "补全边界处理:写盘前备份、写盘失败时 `bp-advance --status failed`、核心功能条数软约束(2-7 条)。",
+        "写盘后追加 `bp-context write --key requirements_doc`,把产物注册到框架索引,让 design 用 `bp-context read` 解耦路径。",
+        "description 改为意图式短句,删除版本号噪声。",
+        "SKILL.md 末尾追加「成功判据」与「最小示例」两节。"
+      ]
+    },
+    {
+      "kind": "skill",
+      "name": "long_task_ucd",
+      "role": "long-task-ucd",
+      "score": 32,
+      "findings": [
+        "**契约断裂(致命)**:上游 requirements 节点产 `{{HARNESS_MEMORY_DIR}}/plans/requirements.md`,本 skill 假设输入是 `docs/plans/*-srs.md`;整个工作流里没有节点生成 SRS 文档,UCD 阶段没有可读输入。",
+        "未使用框架 CLI:全篇未提 `bp-advance` / `bp-context` / `bp-tasks`,HARD-GATE 块是纯文本约束,框架层无法 enforce。",
+        "占位符缺失:全文硬编码 `docs/plans/*-srs.md` 和 `docs/plans/YYYY-MM-DD-<topic>-ucd.md`,跨 cwd 部署会断链。",
+        "子 skill 名硬编码:`调用 long-task:long-task-design` 是字符串字面量,未参数化。",
+        "职责过载:单一 skill 同时承担「抽取 UI 范围 / 定风格方向 / 定义 token / 生成组件+页面 prompt / 写 UCD 文档 / 审批收尾 / 衔接到设计」7 项独立职责。",
+        "截断严重:3.2 字体级阶、3.3 间距、Step 5 页面级提示词、Step 6 tokens 细化、Step 8-9 收尾/推进段全部缺失,文件残缺无法被执行。",
+        "失败/阻塞路径未定义:仅在「无 UI 特性」时给快路径,无 `bp-advance --status blocked/failed` 模板。",
+        "Style 模板强加「Recommendation: Style [X]」带偏见,且无「拒绝全部」回退路径。",
+        "frontmatter 触发条件用文件存在性而非 blueprint state,重入/重跑场景会失判。",
+        "HARD-GATE 是给 LLM 的 prompt 指令而非 framework 拦截,agent 跑偏即可跳过,框架无第二道防线。"
+      ],
+      "suggestions": [
+        "修复上游契约:在 requirements 与 long_task_ucd 之间插入 long_task_srs 节点(或将 requirements 改为产出 `*-srs.md`),并显式声明本 skill 读 `{{HARNESS_MEMORY_DIR}}/plans/<topic>-srs.md`。",
+        "接入三大 CLI:Step 1 用 `bp-context get path=srs` 拉契约产物,checklist 项用 `bp-tasks add` 注册,终态按结果调 `bp-advance`。",
+        "替换硬编码路径:`docs/plans/...` → `{{HARNESS_MEMORY_DIR}}/plans/...`;子 skill 名 → `{{NEXT_SKILL}}`。",
+        "拆分职责为 long_task_ucd_scope / _style / _prompts / _writer 四个 sub-skill,主 skill 只做编排。",
+        "补全缺失段落至少到能单跑可执行。",
+        "三态显式化:在 skill 末尾增加「上报规则」小节,给出 ok/failed/blocked 三种 `bp-advance` 样例。",
+        "删除「Recommendation: Style [X]」预设推荐(或改为「AI 倾向」标注),增加「用户全拒/要求重做」的回退分支。",
+        "frontmatter 改用 state 触发而非文件系统 glob。",
+        "补 `{{AGENT}}` 子代理并行渲染多风格 mockup,避免长上下文。",
+        "头部加「契约参考」段,链接 BLUEPRINT-API.md 的 `bp-advance` 三态与 placeholder_render.js 的占位符表。"
+      ]
+    },
+    {
+      "kind": "skill",
+      "name": "design",
+      "role": "design",
+      "score": 28,
+      "findings": [
+        "契约断裂:节点位于 requirements→long_task_ucd→design,上游 long_task_ucd 产 UCD 文档,本 skill 却读 `requirements.md`,完全跳过 UCD 产物,与所在工作流不匹配。",
+        "frontmatter description 残留「Stage 2 of v8.5 demo blueprint」旧版本信息,技能模板被复用却没清掉。",
+        "缺少输入存在性/非空校验:requirements.md 不存在/为空时如何处置无规则,易产空壳 design.md 后报 ok。",
+        "写文件前无冲突处理:未声明 design.md 已存在时是覆盖/跳过/合并,存在静默覆盖历史产物的风险。",
+        "缺乏设计方法论:3 个章节只是占位标题,未告诉 agent 怎么产出(取舍原则、模块切分粒度、数据流图示规范)。",
+        "质量门槛过弱:仅以数量暗示(1-2 段/3-5 条/简短句子),无 must-have/in-scope/out-of-scope 清单。",
+        "未显式声明三态上报契约,只说「按 banner 指令上报」,依赖隐式 banner。",
+        "产物契约缺失:未说明 design.md 的下游消费方、字段约定、章节顺序、必备段落清单。",
+        "路径硬编码 `plans/`,与上游节点产物的真实落点未对齐。",
+        "无 good/bad 示例,小模型极易产出 5 行敷衍式 design.md。"
+      ],
+      "suggestions": [
+        "重接上游契约:要么 design 节点改为读 UCD 产物、要么去掉 long_task_ucd 中转直连 requirements。",
+        "description 改为意图式短句,删除「v8.5 demo blueprint」版本号。",
+        "补\"输入存在性检查\"小节:requirements.md 不存在/为空直接 `bp-advance --status blocked`。",
+        "写盘前 `test -f <path> && cp <path> <path>.prev.<ts>.md` 备份。",
+        "补全设计方法论:模块切分粒度(按 FR 数 / 按部署边界)、数据流图示规范(Mermaid / PlantUML)、取舍原则。",
+        "硬质量门槛:必须含 NFR 段 / 必须含 Mermaid 图 / 字节下限。",
+        "末尾加「上报规则」:ok/failed/blocked 三种 `bp-advance` 样例。",
+        "末尾加「下游契约」小节,声明 implement / test 节点将从 design.md 读哪些章节。",
+        "在 SKILL.md 末尾给 good / bad 两份示例。"
+      ]
+    }
+  ],
+  "summary": "本工作流是 3 节点线性 DAG(requirements→long_task_ucd→design),结构合法但极度单薄:零门禁、零循环、零 onFail 兜底,把整条流水线的\"通过\"完全押在 LLM 自觉上,工程韧性极差。更致命的是节点间契约相互断裂——long_task_ucd 假设读 SRS 但上游 requirements 产的是 requirements.md;design 又假设读 requirements.md 但实际位于 long_task_ucd 之后。三份 SKILL.md 均未显式调用 `bp-advance` 上报三态,失败/边界处理几乎为零,long_task_ucd 还被截断(7 项职责过载 + 关键章节缺失)。整体属于\"v8.5 早期 demo 雏形\",未达可生产质量。",
+  "topIssues": [
+    "零门禁:三节点无任何 review-skill/脚本化校验,失败沿线性扩散,整条流水线不可重入、不可恢复。",
+    "契约三重断裂:long_task_ucd 找不到 SRS 输入、design 跳过 UCD 直接读 requirements、requirements 写谁也未对齐。",
+    "三态上报缺失:三份 SKILL.md 都「按 banner 指令上报」,未点名 `bp-advance`,失败信号丢失。",
+    "路径与子 skill 名硬编码:long_task_ucd 全篇用 `docs/plans/...` 与 `long-task:long-task-design` 字面量,无 `{{HARNESS_MEMORY_DIR}}` / `{{NEXT_SKILL}}`。",
+    "long_task_ucd 文档被截断 + 7 项职责过载,作为单 skill 既不可维护也不可单跑。"
+  ]
+}

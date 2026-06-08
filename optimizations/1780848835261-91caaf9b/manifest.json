@@ -1,0 +1,22 @@
+{
+  "id": "1780848835261-91caaf9b",
+  "createdAt": "2026-06-07T16:14:23.172Z",
+  "changes": [
+    {
+      "kind": "skill",
+      "name": "requirements",
+      "relPath": "skills/requirements/SKILL.md",
+      "rationale": "步骤 3 的 `bp-advance ok` 属于框架自动注入的完成上报语义，SKILL.md 正文不必重述——最佳实践明确要求剥离此类冗余重述；其余内容符合单一职责、用占位符路径、错误处理合规，无需改动。",
+      "beforeSha": "59384b3590e91fe4e9e209c79ea83a33bb089df7b31dee844e5271480fdf4056",
+      "afterFile": "c0"
+    }
+  ],
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "artifactCount": 3,
+  "analyzed": 3,
+  "changedCount": 1,
+  "unchanged": 2,
+  "skipped": [],
+  "durationMs": 27908
+}

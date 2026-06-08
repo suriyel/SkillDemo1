@@ -1,0 +1,30 @@
+{
+  "id": "1780737398176-486a1808",
+  "createdAt": "2026-06-06T09:17:15.026Z",
+  "changes": [
+    {
+      "kind": "skill",
+      "name": "requirements",
+      "relPath": "skills/requirements/SKILL.md",
+      "rationale": "删除步骤 1/2 中冗余的 `bp-advance failed/ok` 调用（框架自动处理三态上报）；补充 `{{CONTEXT_GET}}` 明确输入来源；移除 bash 风格的 `mkdir -p`（框架不保证 shell 环境），改为先写文件再确保目录存在。",
+      "beforeSha": "59384b3590e91fe4e9e209c79ea83a33bb089df7b31dee844e5271480fdf4056",
+      "afterFile": "c0"
+    },
+    {
+      "kind": "skill",
+      "name": "design",
+      "relPath": "skills/design/SKILL.md",
+      "rationale": "移除 step 1 末尾冗余的「上报 blocked 并退出」（框架已自动处理 bp-advance 三态上报）；将 frontmatter description 从项目特定版本改为泛化描述，使其跨项目可复用。",
+      "beforeSha": "d1d2add1f05f1e5b54c882b3c7b5be07cff1639ea4d02986e5bd549a649de997",
+      "afterFile": "c1"
+    }
+  ],
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "artifactCount": 3,
+  "analyzed": 3,
+  "changedCount": 2,
+  "unchanged": 1,
+  "skipped": [],
+  "durationMs": 36847
+}

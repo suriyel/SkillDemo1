@@ -1,0 +1,38 @@
+{
+  "id": "1780725886812-bef4ceff",
+  "createdAt": "2026-06-06T06:07:20.867Z",
+  "changes": [
+    {
+      "kind": "skill",
+      "name": "requirements",
+      "relPath": "skills/requirements/SKILL.md",
+      "rationale": "删除第3步 `bp-context save`（产物路径已由占位符 `{{HARNESS_MEMORY_DIR}}/plans/requirements.md` 显式表达，下游可自行引用，框架不依赖此步做状态追踪）和第4步 `bp-advance ok`（框架在节点命令全部执行完毕后自动推进，无需显式调用）。保留 mkdir 与文件写入两个核心动作及必要的错误处理。",
+      "beforeSha": "fa8db433bf475ca7a8a4a375e45bb629e66ea67e27fd06f1ef2e1c42009d8936",
+      "afterFile": "c0"
+    },
+    {
+      "kind": "skill",
+      "name": "long_task_ucd",
+      "relPath": "skills/long_task_ucd/SKILL.md",
+      "rationale": "两处违规：①Step1末尾的 AskUserQuestion 为框架工具应改为 {{ASK}} 占位符；②\"通过 long-task:long-task-design 衔接到设计\" 是明确标注该删的跨 skill 路由，DAG 已替代",
+      "beforeSha": "38b6f5c3189114ca812f4a8c6cdabf9cf373a6ed181f6217c42516ea1f5dc8ea",
+      "afterFile": "c1"
+    },
+    {
+      "kind": "skill",
+      "name": "design",
+      "relPath": "skills/design/SKILL.md",
+      "rationale": "frontmatter `name: design` 与节点 id 不匹配（应为 `name: stage-design`），且 `name: design` 与 blueprint.json 中 `\"id\": \"design\"` 是否一致需确认；description 冗余含版本号应泛化；正文已无需显式写 `bp-advance ok`（框架自会上报），`$BP_ADVANCE_CMD` 写法也已消除。",
+      "beforeSha": "8b83dfef2a86c183dc6f4ec06329fc1e24ac1562d9fff073524f1ac31e8fa71c",
+      "afterFile": "c2"
+    }
+  ],
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "artifactCount": 3,
+  "analyzed": 3,
+  "changedCount": 3,
+  "unchanged": 0,
+  "skipped": [],
+  "durationMs": 154050
+}

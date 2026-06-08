@@ -1,0 +1,23 @@
+---
+name: design
+description: Stage 2. Read requirements.md and produce a brief design.md describing structure and data flow.
+---
+
+# 设计
+
+## 输入
+
+`{{REQUIREMENTS_PATH:={{HARNESS_MEMORY_DIR}}/plans/requirements.md}}`
+
+## 产物
+
+`{{HARNESS_MEMORY_DIR}}/plans/design.md`
+
+## 步骤
+
+1. 检查 `{{REQUIREMENTS_PATH}}` 是否存在；若不存在，写入 `{{HARNESS_MEMORY_DIR}}/plans/design.md` 内容为「前置条件不满足：缺少 requirements.md」，随后 `{{ADVANCE_BLOCKED}}` 并退出。
+2. 读取 `{{REQUIREMENTS_PATH}}`
+3. 写 `{{HARNESS_MEMORY_DIR}}/plans/design.md`，含：
+   - **架构概览**（1-2 段，不必过详）
+   - **关键模块**（3-5 条）
+   - **数据流向**（简短句子）

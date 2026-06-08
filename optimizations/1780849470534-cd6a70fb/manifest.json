@@ -1,0 +1,38 @@
+{
+  "id": "1780849470534-cd6a70fb",
+  "createdAt": "2026-06-07T16:25:54.484Z",
+  "changes": [
+    {
+      "kind": "skill",
+      "name": "requirements",
+      "relPath": "skills/requirements/SKILL.md",
+      "rationale": "显式调用 bp-advance 命令不符合框架注入原则（模型应自行根据执行结果上报状态），且末尾的「调用 bp-advance ok 结束本节点」属于冗余重述；保留步骤描述和产物路径说清即可。",
+      "beforeSha": "59384b3590e91fe4e9e209c79ea83a33bb089df7b31dee844e5271480fdf4056",
+      "afterFile": "c0"
+    },
+    {
+      "kind": "skill",
+      "name": "long_task_ucd",
+      "relPath": "skills/long_task_ucd/SKILL.md",
+      "rationale": "移除 `<HARD-GATE>` 硬门包裹块（框架通过 gate-wrapper.template.md 注入三态门禁逻辑，SKILL.md 正文不应重述）；保留其余内容（步骤指引、token 定义、提示词模板、缩放表、判据表均有实质价值）。",
+      "beforeSha": "38b6f5c3189114ca812f4a8c6cdabf9cf373a6ed181f6217c42516ea1f5dc8ea",
+      "afterFile": "c1"
+    },
+    {
+      "kind": "skill",
+      "name": "design",
+      "relPath": "skills/design/SKILL.md",
+      "rationale": "前置条件检查后写 error 文件再上报 blocked 的流程略显冗余；标准做法是检查文件不存在时直接上报 blocked（框架会在相应输出位置记录 halt 原因），无需手动写 error 文件；其余内容已符合最佳实践。",
+      "beforeSha": "d1d2add1f05f1e5b54c882b3c7b5be07cff1639ea4d02986e5bd549a649de997",
+      "afterFile": "c2"
+    }
+  ],
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "artifactCount": 3,
+  "analyzed": 3,
+  "changedCount": 3,
+  "unchanged": 0,
+  "skipped": [],
+  "durationMs": 83942
+}

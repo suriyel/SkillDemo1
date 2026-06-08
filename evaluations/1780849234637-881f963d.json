@@ -1,0 +1,478 @@
+{
+  "id": "1780849234637-881f963d",
+  "createdAt": "2026-06-07T16:23:57.536Z",
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "durationMs": 202899,
+  "artifactCount": 3,
+  "batches": 1,
+  "failedBatches": 0,
+  "mergeFailed": false,
+  "card": {
+    "schema": "bp-eval/3",
+    "overallScore": 54,
+    "computedOverall": 54,
+    "llmOverall": 57,
+    "grade": "D",
+    "dimensions": [
+      {
+        "id": "topology",
+        "name": "拓扑与流程完整性",
+        "weight": 18,
+        "score": 88,
+        "findings": [
+          "startNode \"requirements\" 存在且可达",
+          "线性三节点链：requirements → long_task_ucd → design，无orphan节点",
+          "所有边（2条）的from/to均在nodes数组中，DAG结构连贯",
+          "design 节点为终端，无死路，符合设计意图",
+          "此工作流不含循环节点，无需验证loop body startNode"
+        ],
+        "suggestions": [
+          "节点title仅为单英文单词（requirements/long_task_ucd/design），缺乏业务语义，建议改为描述性标题如「需求提取」「UI组件设计」「架构设计」"
+        ]
+      },
+      {
+        "id": "gating",
+        "name": "门禁与失败恢复",
+        "weight": 18,
+        "score": 15,
+        "findings": [
+          "工作流中不存在任何门禁节点——long_task_ucd 虽在 SKILL.md 中写了 <HARD-GATE> 警告文字，但这只是 prose 文本，不是 DAG 中声明的 kind: 'review' 或 gate 节点",
+          "nodes 数组中三个节点均为 skill 类型，无 onFail 规则，无 maxAttempts 限制",
+          "edges 数组中无任何条件边或失败处理路径",
+          "整个工作流缺乏质量门禁机制，无法在关键阶段强制校验"
+        ],
+        "suggestions": [
+          "在 requirements 和 design 之间（或 design 之后）插入 review-skill 类型的门禁节点，对输出产物（requirements.md / design.md）运行脚本校验（文件存在、非空、格式正确），并配置 onFail 同一作用域回退 + maxAttempts 上限"
+        ]
+      },
+      {
+        "id": "skillQuality",
+        "name": "Skill 工作流契合度",
+        "weight": 16,
+        "score": 72,
+        "findings": [
+          "requirements skill：聚焦于本节点任务（提取需求→写文件），{{HARNESS_MEMORY_DIR}} 路径占位符使用正确，ok/failed/blocked 三态处理与 DAG 中从 requirements 到 long_task_ucd 的意图一致",
+          "long_task_ucd skill：内容极为详尽，覆盖 UI 样式指南全流程；但 <HARD-GATE> 仅为 admonition 文字而非 DAG 门禁节点，实际运行时无法被框架识别为强制质量门禁；与下游 design 节点的衔接（衔接到设计）依赖人工审批而非结构化流转",
+          "design skill：{{REQUIREMENTS_PATH}} 占位符含默认值，步骤正确处理前置条件缺失时上报 blocked；输出三章节（架构概览/关键模块/数据流向）契合设计阶段目标"
+        ],
+        "suggestions": [
+          "long_task_ucd 的 <HARD-GATE> 应替换为 DAG 中真正的门禁节点（review-skill + onFail），而非仅在 prose 中声明",
+          "各节点 SKILL.md 中的 prose 冗余地 restate 框架指导（如 bp-advance 调用说明）应精简，避免混淆"
+        ]
+      },
+      {
+        "id": "generalization",
+        "name": "通用化(跨语言/项目)",
+        "weight": 16,
+        "score": 62,
+        "findings": [
+          "requirements：{{HARNESS_MEMORY_DIR}}/plans/ 为参数化路径，requirements.md 为通用文件名，无项目特定字面量",
+          "long_task_ucd：docs/plans/*-srs.md 使用通配符但 'docs/plans/' 目录名为项目结构假设；'text-to-image prompts'、WCAG、设计token 等概念本身通用；无硬编码端口/语言/框架",
+          "design：description 含 'v8.5 demo blueprint' 和 'Stage 2' 项目特定字面量；输出路径 plans/design.md 目录名 'plans' 硬编码；{{REQUIREMENTS_PATH}} 参数化良好"
+        ],
+        "suggestions": [
+          "去除 design description 中的版本号和 demo 字样；将输出路径参数化为 {{OUTPUT_DIR}}/design.md 或在文件头声明输出变量",
+          "long_task_ucd 中 docs/plans/ 路径建议改为可配置路径变量"
+        ]
+      },
+      {
+        "id": "loopTasks",
+        "name": "循环与任务结构",
+        "weight": 12,
+        "score": 20,
+        "findings": [
+          "工作流 DAG 中无 loop 类型节点",
+          "无 tasks-schema 声明",
+          "long_task_ucd 的 TodoWrite checklist 是步骤清单而非框架级别的循环任务注入"
+        ],
+        "suggestions": [
+          "此工作流为线性三节点链，不涉及循环任务场景，无需 loopTasks 维度支撑；如后续扩展加入迭代场景，需配套声明 tasks-schema 并确保上游 producer 正确灌入 tasks"
+        ]
+      },
+      {
+        "id": "clarity",
+        "name": "文档与可维护性",
+        "weight": 10,
+        "score": 58,
+        "findings": [
+          "工作流 title 为单字「测试」，description 为空，信息量极低",
+          "节点 title：requirements / long_task_ucd / design——前两个为技术术语拼凑，缺乏业务语义",
+          "long_task_ucd SKILL.md 极为冗长（150+行），适合作为完整方法论文档但不适合作为快速参考",
+          "requirements 和 design SKILL.md 简洁可读"
+        ],
+        "suggestions": [
+          "工作流 title/description 应描述此工作流的业务目标（如「需求→UI设计→架构设计三阶段工作流」）",
+          "long_task_ucd 建议增加目录块和分节导航，提升可扫描性"
+        ]
+      },
+      {
+        "id": "robustness",
+        "name": "健壮性与边界",
+        "weight": 10,
+        "score": 60,
+        "findings": [
+          "requirements：目录创建失败、文件写入失败均有 bp-advance failed 处理，覆盖两个主要失败路径",
+          "design：前置条件不满足（requirements.md 缺失）时写说明文件 + blocked + 退出，处理正确",
+          "long_task_ucd：SRS 无 UI 特性时短路跳过；SRS 细节不足时要求 AskUserQuestion——但用户无响应、超时、选择模糊等场景未覆盖；SRS 文件损坏/不存在时无显式处理",
+          "三节点均无上下文预算感知；无防止无限重试的机制（虽然当前无 onFail 也就不存在重试风险）"
+        ],
+        "suggestions": [
+          "long_task_ucd 增加用户无响应时的默认行为（如选用第一个风格选项）和 SRS 解析失败的处理",
+          "design 节点应增加对 requirements.md 非空/格式有效性的校验（当前仅检查存在性）",
+          "建议所有 skill 在文件写入前先校验目标目录存在性"
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "kind": "skill",
+        "name": "requirements",
+        "role": "requirements",
+        "score": 70,
+        "findings": [],
+        "suggestions": [],
+        "dimensions": [
+          {
+            "id": "clarity",
+            "name": "清晰度与可读性",
+            "weight": 18,
+            "score": 76,
+            "findings": [
+              "文档结构简洁，标题层级清晰（# 需求提取 → ## 步骤），可扫描性强",
+              "步骤编号连续，要素（目录创建/文件写入/bp-advance）一目了然",
+              "描述中「1 页 markdown」和「下游 design 阶段」明确了产出用途与上下文",
+              "但三处结构要素标题（项目目标/核心功能/非功能要求）仅以列表呈现，读者需自行判断每条应写多长、语气应多正式，略显模糊"
+            ],
+            "suggestions": [
+              "在步骤2的三项要素前各加一句说明，例如「项目目标：描述用户最终期望达成的结果，1-2 句」",
+              "可考虑在 description 中补充一行示例输入→输出，读者看一眼就懂预期格式"
+            ]
+          },
+          {
+            "id": "actionability",
+            "name": "可执行性与操作具体度",
+            "weight": 18,
+            "score": 68,
+            "findings": [
+              "步骤1给出完整 shell 命令 `mkdir -p`，可直接执行",
+              "步骤2明确写出输出路径 `{{HARNESS_MEMORY_DIR}}/plans/requirements.md`",
+              "步骤3给出 `bp-advance ok` 结束指令",
+              "关键缺失：没有说明「如何从用户消息中提取需求」——没有提取方法、识别信号或判断标准；读者（尤其是新接触需求工程的 agent）不知道该读什么、怎么判断什么是需求、矛盾信息如何处理"
+            ],
+            "suggestions": [
+              "在步骤2之前增加一段「提取指南」，例如：读取用户最新消息，识别「用户想做什么」（目标）和「需要什么功能」（手段），忽略闲聊寒暄",
+              "或提供一句示例：「输入: 我需要一个能上传图片并生成缩略图的网站 → 项目目标：提供一个图片上传与自动生成缩略图的网站」"
+            ]
+          },
+          {
+            "id": "completeness",
+            "name": "完备性与自足性",
+            "weight": 18,
+            "score": 62,
+            "findings": [
+              "输入（用户最新消息）、步骤（目录创建/文件写入/advance）、输出（requirements.md 含三段落）均已说明",
+              "框架豁免条款覆盖 bp-advance 用法，本文档无需赘述",
+              "缺失场景：用户消息为空或仅为闲聊（如「你好」「hi」）时如何处理",
+              "缺失场景：requirements.md 已存在时是覆盖、追加还是报错，未说明",
+              "缺失场景：用户消息包含多个互不相关的需求（是合并还是选其一）",
+              "缺失场景：「非功能要求」注明「可省」，但未说明若省略该节文件格式是否仍要求三段齐全"
+            ],
+            "suggestions": [
+              "增加「边界情况」条目，说明：用户消息无实质需求时调用 `bp-advance blocked \"未能从消息中识别有效需求\"`；文件已存在时覆盖写入",
+              "在步骤2输出格式中说明：若无可填写的非功能要求，该节可省略，文件仍应包含前两节"
+            ]
+          },
+          {
+            "id": "soundness",
+            "name": "技术合理性与无误导",
+            "weight": 16,
+            "score": 82,
+            "findings": [
+              "`mkdir -p` 是跨平台标准写法（Linux/macOS/Win Git Bash 均支持），用法正确",
+              "`bp-advance failed/ok` exit code 语义与框架文档一致",
+              "三段落结构（目标/功能/非功能）是需求文档的经典分类，方法论上合理",
+              "文件写入前先建目录的顺序正确，避免级联失败",
+              "未发现过时语法、矛盾指示或误导性示例"
+            ],
+            "suggestions": [
+              "当前无可改进之处；如需进一步加强，可在「非功能要求」旁列举常见子项（性能要求/安全要求/兼容性）以便读者参考"
+            ]
+          },
+          {
+            "id": "robustness",
+            "name": "健壮性与边界覆盖",
+            "weight": 16,
+            "score": 55,
+            "findings": [
+              "两个失败场景（目录创建失败、文件写入失败）均给出 `bp-advance failed` 处理",
+              "但仍有大量未覆盖的边界情况：用户消息为空、消息仅含闲聊、输出内容极短（1行）、文件已存在且有内容、磁盘空间不足",
+              "缺少「大声失败」之外的中等严重度处理（如无效输入可 `bp-advance blocked` 而非静默接受）",
+              "错误信息为中文，清晰可读，符合要求"
+            ],
+            "suggestions": [
+              "增加通用边界处理节：「若用户消息不包含可识别的需求描述，调用 `bp-advance blocked \"无法从输入中提取有效需求\"`」",
+              "「文件已存在」场景明确为覆盖写入，避免 agent 在该情况下卡住",
+              "考虑增加「内容过短」检测：若识别出的内容少于 20 字，应视为无效输入"
+            ]
+          },
+          {
+            "id": "generalization",
+            "name": "通用化与可复用性",
+            "weight": 14,
+            "score": 82,
+            "findings": [
+              "使用 `{{HARNESS_MEMORY_DIR}}` 占位符实现路径参数化，框架注入机制已知",
+              "输出文件名 `requirements.md` 为通用术语，不含项目/语言/公司特定字面量",
+              "三段落结构不依赖任何具体技术栈或行业术语",
+              "无硬编码路径、端口号、文件名列表或语言语法",
+              "框架豁免条款所列系统提示词内容无需在文档中重复，评分时不视为缺失"
+            ],
+            "suggestions": [
+              "当前版本已具备良好的通用性；如需进一步提升，可将「plans」子目录名也参数化为占位符（例如 `{{PLANS_SUBDIR}}`），不过这可能属于过度工程化"
+            ]
+          }
+        ],
+        "llmScore": null
+      },
+      {
+        "kind": "skill",
+        "name": "long-task-ucd",
+        "role": "long-task-ucd",
+        "score": 77,
+        "findings": [],
+        "suggestions": [],
+        "dimensions": [
+          {
+            "id": "clarity",
+            "name": "清晰度与可读性",
+            "weight": 18,
+            "score": 78,
+            "findings": [
+              "标题层级清晰(H1→H2→H3)，使用markdown结构便于扫描",
+              "HARD-GATE用醒目方式强调关键约束",
+              "适用条件用「当…适用」句式明确说明",
+              "术语使用一致(如『text-to-image提示词』全程统一)",
+              "内容被截断标记`... [内容被截断]`破坏完整性，影响对完整度的判断"
+            ],
+            "suggestions": [
+              "添加目录/快速参考块，帮助读者快速定位步骤",
+              "将『本阶段何时适用』的判断逻辑用表格或流程图呈现，更直观",
+              "确保文档完整无截断"
+            ]
+          },
+          {
+            "id": "actionability",
+            "name": "可执行性与操作具体度",
+            "weight": 18,
+            "score": 72,
+            "findings": [
+              "Checklist用数字编号强制执行顺序",
+              "Step 1-9有明确操作指示，Step 1甚至列举了需要抽取的5类信息",
+              "样式Token提供了完整Markdown表格模板(含列名)，可直接填入",
+              "组件提示词给出结构模板(含Base Prompt/Variant/Constraints)",
+              "但『向用户呈现2-3个视觉风格选项』后『等用户选择或给出方向』—— 未说明用户无响应或选择模糊时的处理方式"
+            ],
+            "suggestions": [
+              "补充『用户无反馈时的默认行为』或『超时机制』",
+              "Step 4组件提示词表格可进一步说明每个slot填什么、谁来填",
+              "『衔接到设计』步骤建议明确说明如何调用下一skill(如bp-advance的exit-code)"
+            ]
+          },
+          {
+            "id": "completeness",
+            "name": "完备性与自足性",
+            "weight": 18,
+            "score": 75,
+            "findings": [
+              "输入(SRS)、输出(UCD文档)、步骤、完成标准均有覆盖",
+              "定义了WCAG对比度、token类型(颜色/字体/间距/图标)",
+              "组件清单覆盖8大类导航/输入/反馈/展示/布局/高级",
+              "文件名模板`YYYY-MM-DD-<topic>-ucd.md`包含时间戳防止冲突",
+              "文档末尾截断，『必需的组件类型』表格后的内容丢失，完整性存疑"
+            ],
+            "suggestions": [
+              "补全截断内容，或在截断处明确标注『完整内容见…』",
+              "建议增加『输出验证』子步骤：如何确认UCD满足SRS的UI需求",
+              "『衔接到设计』可补充输出物清单(设计token、设计稿参考链接等)"
+            ]
+          },
+          {
+            "id": "soundness",
+            "name": "技术合理性与无误导",
+            "weight": 16,
+            "score": 82,
+            "findings": [
+              "WCAG AA/AAA对照表正确(4.5:1普通文本、3:1大文本、7:1 AAA增强)",
+              "样式Token设计符合现代设计系统规范(Token名用CSS变量格式`--color-*`)",
+              "text-to-image提示词结构合理(Base+Variant delta模式)",
+              "Style Recommendation要求匹配SRS用户画像和技术约束，方法论正确",
+              "组件清单覆盖面合理，涵盖主要UI组件类别"
+            ],
+            "suggestions": [
+              "建议指定具体图标库版本号时说明升级策略(如breaking change处理)",
+              "『色板对比度』可补充真实验证方式(如说明用哪些工具检测)",
+              "组件状态变体(Hover/Error/Loading)描述可更具体——如Error state是否包含颜色变化+图标+文字三重信号"
+            ]
+          },
+          {
+            "id": "robustness",
+            "name": "健壮性与边界覆盖",
+            "weight": 16,
+            "score": 68,
+            "findings": [
+              "HARD-GATE防止在审批前执行实现动作，设计合理",
+              "SRS无UI特性时有明确短路逻辑(Skip UCD→衔接到设计)",
+              "SRS缺乏UI细节时要求用AskUserQuestion询问用户",
+              "文件名含时间戳防止覆盖",
+              "缺失：用户拒绝选择风格选项时的处理",
+              "缺失：SRS存在但格式损坏/无法解析的处理",
+              "缺失：生成的UCD内容过大(超出上下文窗口)时的分块策略"
+            ],
+            "suggestions": [
+              "增加『用户持续不响应时的默认选择(如选第一个风格选项)』或『中止机制』",
+              "增加SRS解析失败的错误处理指引",
+              "大型项目应说明如何分章节审批(如『非平凡项目按章节逐段』但未说明分多少章节、每章节多大)",
+              "考虑增加『UCD内容超长时的分段输出与合并策略』"
+            ]
+          },
+          {
+            "id": "generalization",
+            "name": "通用化与可复用性",
+            "weight": 14,
+            "score": 88,
+            "findings": [
+              "文件名用通配符`*-srs.md`、`*-ucd.md`，不硬编码项目名",
+              "Token名用CSS变量格式，与具体前端框架解耦",
+              "组件类型清单用表格+类别组织，不绑定具体UI库(React/Vue/Angular)",
+              "text-to-image提示词模板描述视觉特征而非实现细节",
+              "『Icon library: [recommended library with version]』版本号作为参数而非硬编码值",
+              "文档本身是通用模板，未发现项目特定的端口号、路径片段、函数名"
+            ],
+            "suggestions": [
+              "Style Recommendation中的『Reference style: Material, Ant, Apple HIG』可进一步参数化为『从以下设计语言库选择：{list}』，避免暗示特定生态",
+              "『docs/plans/`路径在项目根目录下通用，但建议说明可通过配置覆盖基础路径"
+            ]
+          }
+        ],
+        "llmScore": null
+      },
+      {
+        "kind": "skill",
+        "name": "design",
+        "role": "design",
+        "score": 71,
+        "findings": [],
+        "suggestions": [],
+        "dimensions": [
+          {
+            "id": "clarity",
+            "name": "清晰度与可读性",
+            "weight": 18,
+            "score": 76,
+            "findings": [
+              "结构清晰：输入定义 → 步骤(带分支) → 输出结构，三段式自然可扫描",
+              "术语一致：REQUIREMENTS_PATH / design.md / blocked 等用语前后统一",
+              "描述中包含项目特定版本号 'v8.5 demo blueprint'，泄漏了上下文；name='design' 本身通用性尚可",
+              "步骤量词模糊（'不必详细'、'简短句子'），但不影响理解"
+            ],
+            "suggestions": [
+              "description 改为泛化描述，如 'Read requirements document and produce a brief architecture design'，去掉 'v8.5 demo blueprint' 等项目特定标记"
+            ]
+          },
+          {
+            "id": "actionability",
+            "name": "可执行性与操作具体度",
+            "weight": 18,
+            "score": 70,
+            "findings": [
+              "三步流程语义完整：检查存在 → 读取 → 写入",
+              "步骤1有明确错误处理（写说明文件 + blocked + 退出），可直接执行",
+              "步骤3仅列出三个章节标题（架构概览/关键模块/数据流向），但未说明每个部分应如何填充：模块粒度如何？数据流向用文字还是图？架构概览要覆盖哪些方面？",
+              "缺少完成标准：写完design.md即算成功，还是需要满足某种质量门槛？"
+            ],
+            "suggestions": [
+              "在步骤3中补充各章节的填写指引（如：关键模块列出模块名+职责一句话；数据流向用 'A→B→C' 顺序描述）",
+              "添加隐式完成标准（如：设计文档非空且包含全部三个章节），或说明由人工审查判断"
+            ]
+          },
+          {
+            "id": "completeness",
+            "name": "完备性与自足性",
+            "weight": 18,
+            "score": 72,
+            "findings": [
+              "输入已定义（requirements.md 路径，含默认值）",
+              "输出已定义（design.md 含三章节：架构概览/关键模块/数据流向）",
+              "前置条件检查 + blocked 上报机制已覆盖",
+              "框架已注入 bp-advance 等，无需赘述",
+              "缺失：requirements.md 本身的有效性格式说明；设计文档与需求之间的追溯关系（设计是否要覆盖全部需求条目）"
+            ],
+            "suggestions": [
+              "在输入定义处说明 requirements.md 应包含的内容大纲（如：功能列表、约束条件、验收要点），便于 Agent 判断读取内容是否有效",
+              "考虑在输出章节中要求 Agent 列出对应的需求条目索引，建立需求-设计追溯"
+            ]
+          },
+          {
+            "id": "soundness",
+            "name": "技术合理性与无误导",
+            "weight": 16,
+            "score": 78,
+            "findings": [
+              "基本逻辑正确：先校验再读取最后写入，符合防御性编程原则",
+              "blocked 上报机制合理，与框架的硬退出/exit-code 机制一致",
+              "步骤3的三章节结构（架构概览/关键模块/数据流向）覆盖了轻量设计文档的核心要素",
+              "未提供架构设计方法论或良好实践指引，导致不同 Agent 产出差异大"
+            ],
+            "suggestions": [
+              "增加轻量方法论提示（如：优先识别核心实体与边界、用一句话描述每个模块职责、数据流从输入到输出跟踪），帮助 Agent 产出结构一致的设计"
+            ]
+          },
+          {
+            "id": "robustness",
+            "name": "健壮性与边界覆盖",
+            "weight": 16,
+            "score": 65,
+            "findings": [
+              "文件不存在时有处理：写说明文件 + blocked + 退出",
+              "文件存在但为空的情况未覆盖（步骤2无校验）",
+              "requirements.md 内容不符合预期格式（如纯二进制、markdown语法严重异常）未说明如何处理",
+              "步骤3写入 design.md 前未检查目标目录是否存在（若 plans/ 子目录缺失则写入失败）"
+            ],
+            "suggestions": [
+              "步骤2后增加对 requirements.md 非空的校验，空时走 blocked 分支",
+              "步骤3前增加对目标目录存在的校验，不存在时创建（mkdir -p 行为）",
+              "增加对 requirements.md 格式的基本校验（如：是否为可读文本），异常时 blocked 而非静默产出无意义设计"
+            ]
+          },
+          {
+            "id": "generalization",
+            "name": "通用化与可复用性",
+            "weight": 14,
+            "score": 62,
+            "findings": [
+              "路径使用参数化（{{HARNESS_MEMORY_DIR}}），支持跨环境复用",
+              "name='design' 本身通用",
+              "description 中包含 'v8.5 demo blueprint' 和 'Stage 2'，属于项目特定字面量，绑定到此 demo 工作流",
+              "输出路径 'plans/design.md' 包含项目特定目录名 'plans'，且未参数化",
+              "章节标题（架构概览/关键模块/数据流向）偏固定模板，通用性一般但尚可接受"
+            ],
+            "suggestions": [
+              "description 去除 'v8.5 demo blueprint' 和 'Stage 2'，改为 'Read requirements and produce a brief design document'",
+              "输出路径参数化：{{DESIGN_OUTPUT_DIR}}/{{DESIGN_OUTPUT_FILENAME}}，或在顶部用输入变量声明输出路径（如 DESIGN_PATH={{HARNESS_MEMORY_DIR}}/plans/design.md）",
+              "若此 SKILL 预期跨项目复用，考虑将章节结构也参数化或提供配置变量"
+            ]
+          }
+        ],
+        "llmScore": null
+      }
+    ],
+    "artifactMean": 73,
+    "summary": "三个 Skill 的内在质量整体良好（long_task_ucd 最详尽，requirements 和 design 偏简约），但工作流结构存在关键缺陷：完全缺少门禁节点（gating得分15/100），long_task_ucd SKILL.md 中的 <HARD-GATE> 仅为 prose 警告而非 DAG 中声明的门禁节点，无法被框架强制执行；此外工作流为纯线性三节点链，无循环任务、描述信息极简、节点title缺乏业务语义，通用性一般。",
+    "topIssues": [
+      "工作流缺少门禁节点：long_task_ucd 的 <HARD-GATE> 是 prose 文字而非 DAG 门禁节点，无法在 UI 设计阶段前强制质量校验，建议在 requirements 与 design 之间插入 review-skill 类型的门禁节点",
+      "long_task_ucd SKILL.md 冗余重申框架指导（bp-advance 三态上报、门禁三态分支流程），且内容被截断影响完整性",
+      "design description 含项目特定字面量（'v8.5 demo blueprint'），输出路径 plans/design.md 未参数化，通用化不足"
+    ]
+  }
+}

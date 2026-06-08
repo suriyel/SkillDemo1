@@ -1,0 +1,19 @@
+---
+name: requirements
+description: Extract a brief requirements doc from the user prompt and write it to {{HARNESS_MEMORY_DIR}}/plans/requirements.md.
+---
+
+# 需求提取
+
+读取用户最新消息，产出 **1 页 markdown** 作为下游 design 阶段的输入。
+
+## 输入
+
+- 用户当前消息：`{{CONTEXT_GET path=message}}`
+
+## 产物
+
+`{{HARNESS_MEMORY_DIR}}/plans/requirements.md`，内容含：
+- **项目目标**（1-2 句）
+- **核心功能**（3-5 条）
+- **非功能要求**（性能/安全/兼容性，可省）

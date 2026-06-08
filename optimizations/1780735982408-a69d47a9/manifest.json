@@ -1,0 +1,30 @@
+{
+  "id": "1780735982408-a69d47a9",
+  "createdAt": "2026-06-06T08:53:59.605Z",
+  "changes": [
+    {
+      "kind": "skill",
+      "name": "requirements",
+      "relPath": "skills/requirements/SKILL.md",
+      "rationale": "移除 Step 3 的显式 `bp-advance ok`（框架自上报）；将旧形态 `bp-advance failed` 替换为 `{{ADVANCE_FAILED}}` 占位符；将 shell 命令改为工具指令描述。",
+      "beforeSha": "59384b3590e91fe4e9e209c79ea83a33bb089df7b31dee844e5271480fdf4056",
+      "afterFile": "c0"
+    },
+    {
+      "kind": "skill",
+      "name": "long_task_ucd",
+      "relPath": "skills/long_task_ucd/SKILL.md",
+      "rationale": "移除 <HARD-GATE> 块（框架通过 gate-wrapper 注入三态包裹）、删除 Step 8「衔接到设计」段落（框架 DAG 负责流转）、修正「何时适用」节中显式指向 `long-task:long-task-design` 的硬编码跳转（改用中性表述「进入下一阶段」），以及精简末尾冗余的「提示词书写规则」——该节内容已由系统 prompt 框架覆盖。保留全部业务正文、checklist、6 个 step、scaling 表、红旗信号表及 frontmatter。",
+      "beforeSha": "38b6f5c3189114ca812f4a8c6cdabf9cf373a6ed181f6217c42516ea1f5dc8ea",
+      "afterFile": "c1"
+    }
+  ],
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "artifactCount": 3,
+  "analyzed": 3,
+  "changedCount": 2,
+  "unchanged": 1,
+  "skipped": [],
+  "durationMs": 57194
+}

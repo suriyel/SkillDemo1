@@ -1,0 +1,19 @@
+---
+name: design
+description: Stage 2 of v8.5 demo blueprint. Read requirements and produce a brief design.md describing structure / data flow.
+---
+
+# 设计
+
+## 输入
+
+`{{REQUIREMENTS_PATH:={{HARNESS_MEMORY_DIR}}/plans/requirements.md}}`
+
+## 步骤
+
+1. 若 `{{REQUIREMENTS_PATH}}` 不存在，上报 blocked 并退出（下游节点可从 `{{HARNESS_MEMORY_DIR}}/plans/design.md` 读取此 halt 的原因说明）。
+2. 读取 `{{REQUIREMENTS_PATH}}`
+3. 写 `{{HARNESS_MEMORY_DIR}}/plans/design.md`，含：
+   - **架构概览**（1-2 段，不必详细）
+   - **关键模块**（3-5 条）
+   - **数据流向**（简短句子）

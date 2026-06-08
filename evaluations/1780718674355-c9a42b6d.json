@@ -1,0 +1,198 @@
+{
+  "id": "1780718674355-c9a42b6d",
+  "createdAt": "2026-06-06T04:06:20.460Z",
+  "tool": "opencode",
+  "model": "minimax-cn/MiniMax-M2.7-highspeed",
+  "durationMs": 106105,
+  "artifactCount": 3,
+  "batches": 1,
+  "failedBatches": 0,
+  "mergeFailed": false,
+  "card": {
+    "schema": "bp-eval/2",
+    "overallScore": 60,
+    "computedOverall": 60,
+    "llmOverall": 68,
+    "grade": "C",
+    "dimensions": [
+      {
+        "id": "topology",
+        "name": "拓扑与流程完整性",
+        "weight": 18,
+        "score": 80,
+        "findings": [
+          "线性三节点 DAG：requirements → long_task_ucd → design，拓扑结构正确",
+          "startNode \"requirements\" 存在且可达，edges 的 from/to 均指向有效节点",
+          "无孤立节点，无不可达节点，无循环（无 loop body startNode 问题）",
+          "design 节点为意图终端（ok 退出），其余节点均通过 ok 边导向下游，无死胡同"
+        ],
+        "suggestions": [
+          "可考虑增加并行分支或条件分支以提高 DAG 丰富度"
+        ]
+      },
+      {
+        "id": "gating",
+        "name": "门禁与失败恢复",
+        "weight": 18,
+        "score": 25,
+        "findings": [
+          " blueprint.json 中不存在任何 review-skill 类型的门禁节点",
+          "所有节点均无 onFail 规则配置，无 maxAttempts 限制，无 rewindTo 指向",
+          "long_task_ucd SKILL.md 中含有 <HARD-GATE> 区块，但该区块仅为 prose 约束，非框架意义上的门禁节点（无脚本校验、无三态上报）",
+          "无任何失败恢复机制——任意节点失败将导致工作流悬挂"
+        ],
+        "suggestions": [
+          "应在关键质量检查点（如 requirements 后）插入 review-skill 门禁节点，执行可度量校验脚本并上报 ok/failed/blocked",
+          "为每个 skill 节点配置 onFail：指定 same-scope rewindTo 与 bounded maxAttempts（如 maxAttempts:3）",
+          "将 long_task_ucd 中的 HARD-GATE prose 约束替换为真正的框架门禁节点"
+        ]
+      },
+      {
+        "id": "skillQuality",
+        "name": "Skill 指令质量",
+        "weight": 16,
+        "score": 86,
+        "findings": [
+          "requirements（92）：步骤清晰，{{HARNESS_MEMORY_DIR}} 使用正确，单一职责，无冗余框架重述；第3步 bp-context save 跨节点协作者设计良好",
+          "long_task_ucd（95）：HARD-GATE 使用正确未被冗余复述，Checklist + Step 结构清晰可操作，占位符使用克制",
+          "design（72）：存在逻辑缺陷——步骤1检查文件不存在时写入错误提示到 design.md，步骤3也写 design.md，两处覆盖；{{REQUIREMENTS_PATH}} 格式正确但未提供内容模板"
+        ],
+        "suggestions": [
+          "design 步骤1的错误提示应写入单独文件（如 design-pending.md），避免覆盖步骤3的正式输出",
+          "design 步骤3应提供关键模块的条目格式规范，减少产出不确定性",
+          "requirements 可补充内容模板示例；long_task_ucd 建议明确产物文件路径模板"
+        ],
+        "llmScore": 86
+      },
+      {
+        "id": "generalization",
+        "name": "通用化(跨语言/项目)",
+        "weight": 16,
+        "score": 82,
+        "findings": [
+          "所有路径使用 {{HARNESS_MEMORY_DIR}} 占位符，未硬编码当前项目路径",
+          "技能描述通用（\"Extract requirements\", \"UCD style guide\", \"design\"），未绑定特定语言或框架",
+          "SRS/UI token 等术语为领域通用概念，非项目绑定",
+          "HARD-GATE 约束适用于任何带 UI 的项目"
+        ],
+        "suggestions": [
+          "design 节点可考虑参数化输入输出路径，进一步解耦与具体项目的绑定"
+        ]
+      },
+      {
+        "id": "loopTasks",
+        "name": "循环与任务结构",
+        "weight": 12,
+        "score": 20,
+        "findings": [
+          "blueprint.json 不存在任何 loop 类型节点",
+          "无 tasks schema 声明，无 maxIterations 配置",
+          "无 upstream producer 声明 tasks schema",
+          "long_task_ucd 内部的 Checklist 为人工 TodoWrite 任务，非框架级 loop 迭代"
+        ],
+        "suggestions": [
+          "如工作流存在批处理场景，应引入 loop 节点并配合 tasks-schema（requiredFields/doneValues）",
+          "建议在 upstream 节点（如 requirements）通过 bp-tasks 灌入任务列表，供下游 loop 消费"
+        ]
+      },
+      {
+        "id": "clarity",
+        "name": "文档与可维护性",
+        "weight": 10,
+        "score": 78,
+        "findings": [
+          "blueprint.json title 为\"测试\"（过于简单），description 为空",
+          "节点 title：requirements / long-task-ucd / design，描述性与准确性良好",
+          "long_task_ucd SKILL.md 章节结构完整（Checklist + Step 子步骤），可维护性佳",
+          "共享引用支持（sourceTemplate）用于 long_task_ucd，设计良好"
+        ],
+        "suggestions": [
+          "blueprint.json 的 title/description 应填写有意义的内容（当前\"测试\"无信息量）",
+          "建议为每个节点补充 description 说明其在整体工作流中的角色"
+        ]
+      },
+      {
+        "id": "robustness",
+        "name": "健壮性与边界",
+        "weight": 10,
+        "score": 45,
+        "findings": [
+          "requirements 使用 bp-advance failed 处理目录创建/文件写入失败，有边界意识",
+          "design 步骤1对前置条件缺失有 blocked 处理",
+          "long_task_ucd 有 AskUserQuestion 分支处理 SRS 细节不足",
+          "无 context budget 意识（无 {{...}} 用量监控或上下文降级策略）",
+          "无防止无限 rewind 的机制（无 maxAttempts 约束）"
+        ],
+        "suggestions": [
+          "添加全局 maxAttempts 约束防止无限重试",
+          "引入 context-degrade 策略监控上下文用量",
+          "建议为关键脚本增加依赖检查（文件/工具存在性验证）"
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "kind": "skill",
+        "name": "requirements",
+        "role": "requirements",
+        "score": 92,
+        "findings": [
+          "步骤定义清晰，使用 numbered list，逻辑顺序正确",
+          "{{HARNESS_MEMORY_DIR}} 占位符使用正确，大小写和语法符合规范",
+          "技能单一职责：仅做需求提取，边界清晰",
+          "无冗余的框架指导重述——bp-advance/bp-context 调用是本技能的必要步骤而非框架兜底说明",
+          "文件名和路径规范，产出物约定明确",
+          "第 3 步的 bp-context save 通知下游是好的跨节点协作实践"
+        ],
+        "suggestions": [
+          "步骤 2 可补充内容模板或示例，进一步降低模糊性",
+          "考虑增加预处理检查（如用户消息是否为空），可提升鲁棒性"
+        ]
+      },
+      {
+        "kind": "skill",
+        "name": "long_task_ucd",
+        "role": "long-task-ucd",
+        "score": 95,
+        "findings": [
+          "【优秀】HARD-GATE 使用正确：框架在顶部注入的 <HARD-GATE> 区块未被 SKILL.md 主体冗余复述，符合契约",
+          "【优秀】单一职责清晰：技能聚焦于\"UCD 样式指南生成\"一件事，职责边界未扩散至设计或实现",
+          "【优秀】步骤可操作性强：Checklist + Step 子步骤结构清晰，每步均有具体输入输出要求",
+          "【优秀】占位符使用克制：全文无一处 {{...}} 滥用，未发现框架已提供内容的占位符冗余",
+          "【轻微】Step 2-9 后续步骤被截断，若完整文件存在步骤断链或内容断层风险，建议核对完整版本",
+          "【轻微】无【边界条件】明确说明：当 SRS 无 UI 特性时跳至设计阶段的逻辑已定义，但\"UI 细节不足时 AskUserQuestion\"的分支未在 checklist 中显式编号"
+        ],
+        "suggestions": [
+          "考虑在 checklist 末尾补充一条【验证 UCD 质量门槛】，如提示词可执行性、风格选项可决定性等非功能标准",
+          "如后续步骤包含 bp-advance 调用建议明确写在【衔接到设计】中，而非隐式依赖 harness 注入",
+          "建议补充\"本阶段产物\"章节，明确列出输出文件路径模板（如 `docs/plans/<date>-<topic>-ucd.md`），便于审计追踪"
+        ]
+      },
+      {
+        "kind": "skill",
+        "name": "design",
+        "role": "design",
+        "score": 72,
+        "findings": [
+          "步骤1存在逻辑问题：检查文件不存在时写入design.md（错误提示），但后续步骤3也要写design.md（正式内容），两处写入目标文件路径相同，会造成覆盖",
+          "步骤3要求写「关键模块」和「数据流向」但未提供具体的模块命名规范或格式要求，指令粒度偏粗",
+          "步骤1提到`bp-advance blocked`——这属于描述 Harness 通信机制，但并非「冗余重申框架已有说明」，而是缺失该机制时应如何处置的逻辑说明，整体属于工作流作者应自行定义的指令，不构成扣分项",
+          "placeholder 使用正确：`{{HARNESS_MEMORY_DIR}}`和`{{REQUIREMENTS_PATH}}`格式无误，路径推导逻辑清晰"
+        ],
+        "suggestions": [
+          "将步骤1的错误路径与步骤3的正式输出路径分开，例如错误时写`design-pending.md`，避免同一文件被覆盖",
+          "在步骤3中明确「关键模块」的条目格式（如每条一行，用`|`分隔名称和职责），减少产出不确定性",
+          "可补充：如果`{{REQUIREMENTS_PATH}}`存在但在格式上为空或无法解析时，是否也走blocked分支，提高鲁棒性"
+        ]
+      }
+    ],
+    "artifactMean": 86,
+    "summary": "技能层面评估良好：requirements（92）和 long_task_ucd（95）指令质量高、占位符使用正确、无冗余框架重述；design（72）存在文件覆盖逻辑缺陷但整体可用。工作流结构层面存在严重问题：blueprint.json 完全缺少门禁节点（gating 25分）和 onFail 失败恢复机制（robustness 45分），以及缺失 loop 任务结构（loopTasks 20分），导致工作流无法在质量检查点强制校验且失败无恢复路径，风险敞口较大。",
+    "topIssues": [
+      "【关键】blueprint.json 无任何 review-skill 门禁节点，所有节点无 onFail 规则——工作流缺乏质量强制与失败恢复机制",
+      "【关键】design SKILL.md 步骤1和步骤3均写入同一文件 design.md，会导致错误提示被正式内容覆盖",
+      "【重要】无 loop 节点和 tasks schema，无批量任务处理能力，工作流表达能力受限",
+      "【重要】long_task_ucd 完整内容被截断（3385 bytes truncated），步骤2-9内容完整性存疑"
+    ]
+  }
+}
